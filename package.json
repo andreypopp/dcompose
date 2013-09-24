@@ -6,7 +6,7 @@
   "dependencies": {
     "dgraph": "~0.6.0",
     "dgraph-bundler": "~0.3.0",
-    "dgraph-live": "~0.1.1",
+    "dgraph-live": "~0.2.0",
     "lodash": "~2.1.0",
     "browser-resolve": "~1.1.4",
     "kew": "~0.1.7",
