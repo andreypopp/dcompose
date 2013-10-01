@@ -2,13 +2,11 @@
 
 var path          = require('path'),
     EventEmitter  = require('events').EventEmitter,
-    utils         = require('lodash'),
+    u             = require('lodash'),
     q             = require('kew'),
     through       = require('through'),
-    asStream      = require('as-stream'),
     aggregate     = require('stream-aggregate-promise'),
     combine       = require('stream-combiner'),
-    resolveCb     = require('browser-resolve'),
     builtins      = require('browser-builtins'),
     insertGlobals = require('insert-module-globals'),
     depsSort      = require('deps-sort'),
@@ -16,14 +14,15 @@ var path          = require('path'),
     DGraph        = require('dgraph').Graph,
     dgraphlive    = require('dgraph-live'),
     cssImportTr   = require('dgraph-css-import'),
-    JSBundler     = require('dgraph-bundler').Bundler;
+    JSBundler     = require('dgraph-bundler').Bundler,
+    utils         = require('./utils');
 
 /**
  * @param entries {Array|String}
  * @param opts {Object}
  */
 function Compose(entries, opts) {
-  if (arguments.length === 1 && utils.isObject(entries)) {
+  if (arguments.length === 1 && u.isObject(entries)) {
     opts = entries;
     entries = opts.entries;
   }
@@ -35,12 +34,12 @@ function Compose(entries, opts) {
   this.basedir = this.opts.basedir || process.cwd();
   this._expose = {}; // will be computed by Compose::_entries
 
-  this._entries = utils.memoize(this._entries);
-  this._graph = utils.memoize(this._graph);
-  this._indexes = utils.memoize(this._indexes);
+  this._entries = u.memoize(this._entries);
+  this._graph = u.memoize(this._graph);
+  this._indexes = u.memoize(this._indexes);
 }
 
-utils.assign(Compose.prototype, EventEmitter.prototype, {
+u.assign(Compose.prototype, EventEmitter.prototype, {
 
   /**
    * Return JS bundle as a stream.
@@ -50,10 +49,10 @@ utils.assign(Compose.prototype, EventEmitter.prototype, {
     opts = opts || {};
     return this._createOutput(function(indexes, output) {
       combine(
-        new JSBundler(indexToStream(indexes.js), {
+        new JSBundler(utils.indexToStream(indexes.js), {
             expose: this._expose, debug: opts.debug})
           .through(insertGlobals({basedir: this.basedir}))
-          .inject(dummyModule, {expose: true})
+          .inject(utils.dummyModule, {expose: true})
           .toStream(),
         output);
     }.bind(this));
@@ -67,7 +66,7 @@ utils.assign(Compose.prototype, EventEmitter.prototype, {
     opts = opts || {};
     return this._createOutput(function(indexes, output) {
       combine(
-        indexToStream(indexes.css),
+        utils.indexToStream(indexes.css),
         depsSort(),
         cssPack(),
         output);
@@ -96,11 +95,11 @@ utils.assign(Compose.prototype, EventEmitter.prototype, {
 
   _entries: function() {
     var parent = {filename: path.join(this.basedir, '_fake.js')},
-        p = this.entries.map(function(m) {return resolve(m.id || m, parent);});
+        p = this.entries.map(function(m) {return utils.resolve(m.id || m, parent);});
     return q.all(p).then(function(entries) {
       for (var i = 0, length = entries.length; i < length; i++)
         if (this.entries[i].expose)
-          this._expose[entries[i]] = utils.isBoolean(this.entries[i].expose) ?
+          this._expose[entries[i]] = u.isBoolean(this.entries[i].expose) ?
             this.entries[i].id : this.entries[i].expose;
       return entries;
     }.bind(this));
@@ -140,55 +139,14 @@ utils.assign(Compose.prototype, EventEmitter.prototype, {
         return aggregate(graph.toStream());
       }.bind(this))
       .then(function(modules) {
-        var graph = buildIndex(modules),
-            css = separateSubgraph(graph, matcher(/\.(css|styl|scss|sass|less)/));
+        var graph = utils.buildIndex(modules),
+            css = utils.separateSubgraph(graph, utils.matcher(/\.(css|styl|scss|sass|less)/));
         return {
-          css: stubMissingDeps(css),
-          js: stubMissingDeps(graph)
+          css: utils.stubMissingDeps(css),
+          js: utils.stubMissingDeps(graph)
         }
       }.bind(this));
   },
 });
-
-var dummyModule = {id: '__dummy__', source: ''};
-
-function matcher(regexp) {
-  return regexp.exec.bind(regexp);
-}
-
-function stubMissingDeps(graph) {
-  for (var id in graph)
-    for (var dep in graph[id].deps)
-      if (!graph[graph[id].deps[dep]])
-        graph[id].deps[dep] = dummyModule.id;
-  return graph;
-}
-
-function separateSubgraph(graph, predicate) {
-  var subgraph = {};
-  for (var id in graph)
-    if (predicate(id)) {
-      subgraph[id] = graph[id];
-      delete graph[id];
-    }
-  return subgraph;
-}
-
-function buildIndex(modules) {
-  var graph = {};
-  for (var i = 0, length = modules.length; i < length; i++)
-    graph[modules[i].id] = utils.cloneDeep(modules[i]);
-  return graph;
-}
-
-function resolve(id, parent) {
-  var promise = q.defer();
-  resolveCb(id, parent, promise.makeNodeResolver());
-  return promise;
-}
-
-function indexToStream(index) {
-  return asStream.apply(null, utils.values(index));
-}
 
 module.exports = Compose;
