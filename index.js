@@ -14,7 +14,7 @@ var path          = require('path'),
     depsSort      = require('deps-sort'),
     cssPack       = require('css-pack'),
     DGraph        = require('dgraph').Graph,
-    DGraphLive    = require('dgraph-live'),
+    dgraphlive    = require('dgraph-live'),
     cssImportTr   = require('dgraph-css-import'),
     JSBundler     = require('dgraph-bundler').Bundler;
 
@@ -112,13 +112,13 @@ utils.assign(Compose.prototype, EventEmitter.prototype, {
 
     return this._entries()
       .then(function(entries) {
-        var graphCls = this.opts.watch ? DGraphLive : DGraph,
-            graph = new graphCls(entries, {
-              transform: [].concat(this.opts.transform, cssImportTr),
-              extensions: this.opts.extensions,
-              modules: builtins
-            });
+        var graph = new DGraph(entries, {
+            transform: [].concat(this.opts.transform, cssImportTr),
+            extensions: this.opts.extensions,
+            modules: builtins
+          });
         if (this.opts.watch) {
+          graph = dgraphlive(graph);
           graph.on('update', function() {
             this._indexes.cache = {};
             this.emit('update');
