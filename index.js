@@ -141,8 +141,8 @@ utils.assign(Compose.prototype, EventEmitter.prototype, {
         var graph = buildIndex(modules),
             css = separateSubgraph(graph, matcher(/\.(css|styl|scss|sass|less)/));
         return {
-          css: stubMissedDependencies(css),
-          js: stubMissedDependencies(graph)
+          css: stubMissingDeps(css),
+          js: stubMissingDeps(graph)
         }
       }.bind(this));
   },
@@ -152,7 +152,7 @@ function matcher(regexp) {
   return regexp.exec.bind(regexp);
 }
 
-function stubMissedDependencies(graph) {
+function stubMissingDeps(graph) {
   for (var id in graph)
     for (var dep in graph[id].deps)
       if (!graph[graph[id].deps[dep]])
