@@ -7,9 +7,7 @@ var fs          = require('fs'),
     optimist    = require('optimist')
       .usage('Usage: dcompose [options] entry')
       .check(function(argv) {
-        if (argv._.length === 0) {
-          throw new Error('provide entry');
-        }
+        if (argv._.length === 0) throw new Error('provide entry');
       })
       .option('h', {
         alias: 'help',
@@ -20,22 +18,27 @@ var fs          = require('fs'),
         alias: 'transform',
         describe: 'Apply transform'
       })
+      .option('d', {
+        alias: 'debug',
+        describe: 'Emit source maps'
+      })
       .option('o', {
         alias: 'output',
         describe: 'Set output directory'
       })
       .option('js', {
+        boolean: true,
         describe: 'Process only JavaScript'
       })
       .option('css', {
+        boolean: true,
         describe: 'Process only CSS'
-      })
+      });
 
 var argv = optimist.argv;
 
-if (argv.help) {
+if (argv.help)
   return optimist.showHelp();
-}
 
 var composer = new DCompose({
   entries: argv._,
@@ -45,20 +48,28 @@ var composer = new DCompose({
 
 var output = argv.output || argv.o || '.';
 
+function onError(stream) {
+  stream.on('error', function(err) {
+    console.error(err.stack);
+    process.exit(1);
+  });
+  return stream;
+}
+
 if (argv.js) {
-  composer.js().pipe(output === '-'
+  onError(composer.js(argv)).pipe(output === '-'
     ?  process.stdout
     : fs.createWriteStream(path.join(output, 'bundle.js')));
 
 } else if (argv.css) {
-  composer.css().pipe(output === '-'
+  onError(composer.css(argv)).pipe(output === '-'
     ?  process.stdout
     : fs.createWriteStream(path.join(output, 'bundle.css')));
 
 } else {
-  var bundles = composer.all();
+  var bundles = composer.all(argv);
   ['js', 'css'].forEach(function(bundle) {
-    bundles[bundle].pipe(
+    onError(bundles[bundle]).pipe(
       fs.createWriteStream(path.join(output, 'bundle.' + bundle)));
   });
 }

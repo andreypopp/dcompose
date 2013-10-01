@@ -28,6 +28,8 @@ function Compose(entries, opts) {
     entries = opts.entries;
   }
 
+  opts.extensions = ['.js'].concat(opts.extensions || []);
+
   this.entries = [].concat(entries);
   this.opts = opts || {};
   this.basedir = this.opts.basedir || process.cwd();
@@ -51,7 +53,7 @@ utils.assign(Compose.prototype, EventEmitter.prototype, {
         new JSBundler(indexToStream(indexes.js), {
             expose: this._expose, debug: opts.debug})
           .through(insertGlobals({basedir: this.basedir}))
-          .inject({id: '__dummy__', source: ''}, {expose: true})
+          .inject(dummyModule, {expose: true})
           .toStream(),
         output);
     }.bind(this));
@@ -148,6 +150,8 @@ utils.assign(Compose.prototype, EventEmitter.prototype, {
   },
 });
 
+var dummyModule = {id: '__dummy__', source: ''};
+
 function matcher(regexp) {
   return regexp.exec.bind(regexp);
 }
@@ -156,7 +160,7 @@ function stubMissingDeps(graph) {
   for (var id in graph)
     for (var dep in graph[id].deps)
       if (!graph[graph[id].deps[dep]])
-        graph[id].deps[dep] = '__dummy__';
+        graph[id].deps[dep] = dummyModule.id;
   return graph;
 }
 
