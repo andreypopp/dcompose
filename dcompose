@@ -3,7 +3,6 @@
 
 var fs          = require('fs'),
     path        = require('path'),
-    DCompose    = require('./index'),
     optimist    = require('optimist')
       .usage('Usage: dcompose [options] entry')
       .check(function(argv) {
@@ -26,6 +25,10 @@ var fs          = require('fs'),
         alias: 'output',
         describe: 'Set output directory'
       })
+      .option('multi', {
+        boolean: true,
+        describe: 'Split bundle into multiple pieces'
+      })
       .option('js', {
         boolean: true,
         describe: 'Process only JavaScript'
@@ -39,6 +42,11 @@ var argv = optimist.argv;
 
 if (argv.help)
   return optimist.showHelp();
+
+if (!argv.multi)
+  var DCompose = require('./index')
+else
+  var DCompose = require('./multi/index');
 
 var composer = new DCompose({
   entries: argv._,
@@ -56,7 +64,15 @@ function onError(stream) {
   return stream;
 }
 
-if (argv.js) {
+function layoutMultiBundle(streams, directory) {
+  for (var name in streams)
+    streams[name]
+      .pipe(fs.createWriteStream(path.join(directory, name)))
+}
+
+if (argv.multi) {
+  layoutMultiBundle(composer.all(argv), output);
+} else if (argv.js) {
   onError(composer.js(argv)).pipe(output === '-'
     ?  process.stdout
     : fs.createWriteStream(path.join(output, 'bundle.js')));
@@ -73,3 +89,4 @@ if (argv.js) {
       fs.createWriteStream(path.join(output, 'bundle.' + bundle)));
   });
 }
+

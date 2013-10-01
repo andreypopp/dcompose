@@ -21,22 +21,15 @@ var path          = require('path'),
  * @param entries {Array|String}
  * @param opts {Object}
  */
-function Compose(entries, opts) {
-  if (arguments.length === 1 && u.isObject(entries)) {
-    opts = entries;
-    entries = opts.entries;
-  }
-
+function Compose(opts) {
   opts.extensions = ['.js'].concat(opts.extensions || []);
 
-  this.entries = [].concat(entries);
+  this.entries = [].concat(opts.entries);
   this.opts = opts || {};
   this.basedir = this.opts.basedir || process.cwd();
-  this._expose = {}; // will be computed by Compose::_entries
+  this._expose = {}; // will be computed by Compose::resolveEntries
 
-  this._entries = u.memoize(this._entries);
-  this._graph = u.memoize(this._graph);
-  this._indexes = u.memoize(this._indexes);
+  this.processGraph = u.memoize(this.processGraph);
 }
 
 u.assign(Compose.prototype, EventEmitter.prototype, {
@@ -49,8 +42,13 @@ u.assign(Compose.prototype, EventEmitter.prototype, {
     opts = opts || {};
     return this._createOutput(function(indexes, output) {
       combine(
-        new JSBundler(utils.indexToStream(indexes.js), {
-            expose: this._expose, debug: opts.debug})
+        new JSBundler(
+            utils.indexToStream(indexes.js),
+            {
+              expose: this._expose,
+              debug: opts.debug,
+              prelude: this.prelude
+            })
           .through(insertGlobals({basedir: this.basedir}))
           .inject(utils.dummyModule, {expose: true})
           .toStream(),
@@ -84,7 +82,7 @@ u.assign(Compose.prototype, EventEmitter.prototype, {
     var output = through(),
         onError = function(err) { output.emit('error', err); };
 
-    this._indexes()
+    this.processGraph()
       .then(function(indexes) {
         func(indexes, output);
       }.bind(this))
@@ -93,7 +91,7 @@ u.assign(Compose.prototype, EventEmitter.prototype, {
     return output;
   },
 
-  _entries: function() {
+  resolveEntries: function() {
     var parent = {filename: path.join(this.basedir, '_fake.js')},
         p = this.entries.map(function(m) {return utils.resolve(m.id || m, parent);});
     return q.all(p).then(function(entries) {
@@ -109,9 +107,9 @@ u.assign(Compose.prototype, EventEmitter.prototype, {
    * Resolve entries and instantiate graph for them.
    * The returned value will be memorized.
    */
-  _graph: function() {
+  createGraph: function() {
 
-    return this._entries()
+    return this.resolveEntries()
       .then(function(entries) {
         var graph = new DGraph(entries, {
             transform: [].concat(this.opts.transform, cssImportTr),
@@ -121,7 +119,7 @@ u.assign(Compose.prototype, EventEmitter.prototype, {
         if (this.opts.watch) {
           graph = dgraphlive(graph);
           graph.on('update', function() {
-            this._indexes.cache = {};
+            this.processGraph.cache = {};
             this.emit('update');
           }.bind(this));
         }
@@ -129,24 +127,27 @@ u.assign(Compose.prototype, EventEmitter.prototype, {
       }.bind(this));
   },
 
+  processGraph: function() {
+    return this.createGraph()
+      .then(function(graph) {return aggregate(graph.toStream())})
+      .then(utils.buildIndex)
+      .then(this.layoutGraph.bind(this)).end();
+  },
+
   /**
    * Return a resolved graph as a set of indexes.
    * The returned value will be memorized.
    */
-  _indexes: function() {
-    return this._graph()
-      .then(function(graph) {
-        return aggregate(graph.toStream());
-      }.bind(this))
-      .then(function(modules) {
-        var graph = utils.buildIndex(modules),
-            css = utils.separateSubgraph(graph, utils.matcher(/\.(css|styl|scss|sass|less)/));
-        return {
-          css: utils.stubMissingDeps(css),
-          js: utils.stubMissingDeps(graph)
-        }
-      }.bind(this));
-  },
+  layoutGraph: function(graph) {
+    var css = utils.separateSubgraph(
+      graph,
+      utils.matcher(/\.(css|styl|scss|sass|less)/));
+    return {
+      css: utils.stubMissingDeps(css),
+      js: utils.stubMissingDeps(graph)
+    }
+  }
+
 });
 
 module.exports = Compose;

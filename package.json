@@ -19,7 +19,8 @@
     "css-pack": "~0.1.6",
     "dgraph-css-import": "~0.1.1",
     "optimist": "~0.6.0",
-    "as-stream": "~0.1.1"
+    "as-stream": "~0.1.1",
+    "detective": "~2.2.0"
   },
   "devDependencies": {
     "jshint": "~2.1.11"
