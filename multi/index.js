@@ -1,3 +1,10 @@
+/**
+ * @typedef {Object} Split
+ * @property {Object} graph
+ * @property {Array.<Strign>} deps
+ * @property {Array.<Strign>} invDeps
+ */
+
 var BaseCompose = require('../index'),
     fs          = require('fs'),
     path        = require('path'),
@@ -31,7 +38,7 @@ function LayoutStrategy(graph, entry) {
 
 LayoutStrategy.prototype = {
   layout: function() {
-    var splits = this.splitGraph(),
+    var splits = this.computeSplits(),
         conds = this.computeConditions(splits),
         results = {};
 
@@ -40,8 +47,12 @@ LayoutStrategy.prototype = {
 
     for (var id in splits) {
       results[bundleName(id)] = splits[id].graph;
-      if (conds[id])
+      if (conds[id]) {
+        console.log('')
         variants(conds[id]).forEach(function(conds) {
+          if (conds.some(function(c) { return splits[id].invDeps.indexOf(c) > -1; }))
+            return
+          console.log(id, conds)
           var bundle = splits[id].graph;
           conds.forEach(function(c) {
             bundle = except(bundle, splits[c].graph);
@@ -49,21 +60,42 @@ LayoutStrategy.prototype = {
           if (!u.isEmpty(bundle))
             results[bundleName(id, conds)] = bundle;
         });
+      }
     }
 
     console.log(u.keys(results).length);
     return results;
   },
 
-  splitGraph: function() {
+  /**
+   * Compute splits for a graph
+   */
+  computeSplits: function() {
     var splits = {};
+
     splits[this.entry] = computeSplit(this.graph, this.entry);
+
     traverse(this.graph, this.entry, function(mod) {
-      if (!u.isEmpty(mod.async_deps)) {
-        for (var id in mod.async_deps)
-          splits[mod.async_deps[id]] = computeSplit(this.graph, mod.async_deps[id]);
-      }
+      if (u.isEmpty(mod.async_deps)) return;
+      for (var id in mod.async_deps)
+        splits[mod.async_deps[id]] = computeSplit(this.graph, mod.async_deps[id]);
     }.bind(this));
+
+    var allPaths = {},
+        queue = [{id: this.entry, path: []}];
+
+    while (queue.length > 0) {
+      var c = queue.shift();
+      if (splits[c.id].deps.length > 0) {
+        queue = queue.concat(splits[c.id].deps.map(function(d) {
+          return {id: d, path: c.path.concat(c.id)};
+        }));
+      }
+      (allPaths[c.id] = allPaths[c.id] || []).push(c.path);
+    }
+
+    for (var id in allPaths)
+      splits[id].invDeps = u.intersection.apply(null, allPaths[id]);
 
     return splits;
   },
