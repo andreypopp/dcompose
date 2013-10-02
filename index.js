@@ -24,7 +24,14 @@ var path          = require('path'),
 function Compose(opts) {
   opts.extensions = ['.js'].concat(opts.extensions || []);
 
-  this.entries = [].concat(opts.entries);
+  this.entries = [].concat(opts.entries).map(function(m) {
+    if (u.isString(m)) {
+      return {unresolvedId: m, entry: true};
+    } else {
+      m.unresolvedId = m.id;
+      return m;
+    }
+  });
   this.opts = opts || {};
   this.basedir = this.opts.basedir || process.cwd();
   this._expose = {}; // will be computed by Compose::resolveEntries
@@ -94,12 +101,17 @@ u.assign(Compose.prototype, EventEmitter.prototype, {
 
   resolveEntries: function() {
     var parent = {filename: path.join(this.basedir, '_fake.js')},
-        p = this.entries.map(function(m) {return utils.resolve(m.id || m, parent);});
+        p = this.entries.map(function(m) {
+          return utils.resolve(m.unresolvedId, parent).then(function(id) {
+            m.id = id;
+            return m;
+          });
+        });
     return q.all(p).then(function(entries) {
       for (var i = 0, length = entries.length; i < length; i++)
         if (this.entries[i].expose)
-          this._expose[entries[i]] = u.isBoolean(this.entries[i].expose) ?
-            this.entries[i].id : this.entries[i].expose;
+          this._expose[entries[i].id] = u.isBoolean(this.entries[i].expose) ?
+            this.entries[i].unresolvedId : this.entries[i].expose;
       return entries;
     }.bind(this));
   },

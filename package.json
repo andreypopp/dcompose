@@ -4,7 +4,7 @@
   "description": "Asset composer",
   "main": "index.js",
   "dependencies": {
-    "dgraph": "0.7.x",
+    "dgraph": "0.8.x",
     "dgraph-live": "0.4.x",
     "dgraph-bundler": "0.3.x",
     "lodash": "2.x.x",
