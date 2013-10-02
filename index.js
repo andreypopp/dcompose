@@ -29,6 +29,7 @@ function Compose(opts) {
   this.basedir = this.opts.basedir || process.cwd();
   this._expose = {}; // will be computed by Compose::resolveEntries
 
+  this.createGraph = u.memoize(this.createGraph);
   this.processGraph = u.memoize(this.processGraph);
 }
 
