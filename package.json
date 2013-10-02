@@ -5,7 +5,7 @@
   "main": "index.js",
   "dependencies": {
     "dgraph": "0.7.x",
-    "dgraph-live": "0.3.x",
+    "dgraph-live": "0.4.x",
     "dgraph-bundler": "0.3.x",
     "lodash": "2.x.x",
     "browser-resolve": "~1.1.4",
