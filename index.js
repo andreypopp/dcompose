@@ -129,8 +129,8 @@ u.assign(Compose.prototype, EventEmitter.prototype, {
             extensions: this.opts.extensions,
             modules: builtins
           });
-        if (this.opts.watch) {
-          graph = dgraphlive(graph);
+        if (this.opts.watch || this.opts.watchAll) {
+          graph = dgraphlive(graph, {watchAll: this.opts.watchAll});
           graph.on('update', function() {
             this.processGraph.cache = {};
             this.emit('update');
