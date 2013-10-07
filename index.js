@@ -65,7 +65,7 @@ utils.assign(Composer.prototype, EventEmitter.prototype, {
         parent = {filename: path.join(mod.basedir || this.basedir, '_fake.js')};
     resolve(mod.id, parent, promise.makeNodeResolver());
     return promise.then(function(id) {
-      return utils.assign({}, mod, {id: id});
+      return utils.assign(mod, {id: id});
     });
   },
 
