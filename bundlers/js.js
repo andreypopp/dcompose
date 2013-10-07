@@ -1,11 +1,10 @@
 var utils         = require('lodash'),
-    crypto        = require('crypto'),
     browserPack   = require('browser-pack'),
     through       = require('through'),
     insertGlobals = require('insert-module-globals'),
     depsSort      = require('deps-sort'),
     combine       = require('stream-combiner'),
-    graphToStream = require('../common').graphToStream;
+    common        = require('../common');
 
 /**
  * Bundle graph of javascript dependencies
@@ -17,7 +16,7 @@ var utils         = require('lodash'),
  *  @property {String} prelude
  */
 module.exports = function(graph, opts) {
-  var pipeline = [graphToStream(graph)];
+  var pipeline = [common.graphToStream(graph)];
 
   if (opts.debug)
     pipeline.push(insertDebugInfo());
@@ -59,13 +58,13 @@ function mangleModuleNames(expose) {
     if (expose[mod.id])
       mod.id = expose[mod.id];
     else
-      mod.id = hash(mod.id);
+      mod.id = common.hash(mod.id);
     for (var id in mod.deps)
       if (mod.deps[id])
         if (expose[mod.deps[id]])
           mod.deps[id] = expose[mod.deps[id]];
         else
-          mod.deps[id] = hash(mod.deps[id]);
+          mod.deps[id] = common.hash(mod.deps[id]);
     this.queue(mod);
   });
 }
@@ -79,6 +78,3 @@ function insertDebugInfo() {
   });
 }
 
-function hash(what) {
-  return crypto.createHash('md5').update(what).digest('base64').slice(0, 6)
-}

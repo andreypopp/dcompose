@@ -1,5 +1,6 @@
 var utils         = require('lodash'),
     q             = require('kew'),
+    crypto        = require('crypto'),
     asStream      = require('as-stream');
 
 exports.buildIndex = function(modules) {
@@ -34,12 +35,6 @@ exports.separateSubgraph = function(graph, predicate) {
 }
 
 /**
- * Resolve module id
- * @param {String} id
- * @param {Module} parent
- */
-
-/**
  * Stream dependencies from graph
  * @param {Object|Array|Graph} graph
  */
@@ -50,4 +45,8 @@ exports.graphToStream = function(graph) {
     return asStream.apply(null, graph)
   else
     return asStream.apply(null, utils.values(graph))
+}
+
+exports.hash = function(what) {
+  return crypto.createHash('md5').update(what).digest('base64').slice(0, 6)
 }
