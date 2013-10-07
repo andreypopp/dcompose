@@ -16,6 +16,7 @@ var utils         = require('lodash'),
  *  @property {String} prelude
  */
 module.exports = function(graph, opts) {
+  opts = opts || {};
   var pipeline = [common.graphToStream(graph)];
 
   if (opts.debug)
