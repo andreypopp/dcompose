@@ -1,21 +1,15 @@
-var u             = require('lodash'),
-    resolveCb     = require('browser-resolve'),
+var utils         = require('lodash'),
     q             = require('kew'),
     asStream      = require('as-stream');
 
-exports.indexToStream = function(index) {
-  return asStream.apply(null, u.values(index));
-}
-
 exports.buildIndex = function(modules) {
-  var graph = {};
+  var index = {};
   for (var i = 0, length = modules.length; i < length; i++)
-    graph[modules[i].id] = u.cloneDeep(modules[i]);
-  return graph;
+    index[modules[i].id] = utils.cloneDeep(modules[i]);
+  return index;
 }
 
-
-exports.dummyModule = {id: '__dummy__', source: ''};
+exports.dummyModule = {id: '__dummy__', source: '', expose: '__dummy__'};
 
 exports.matcher = function(regexp) {
   return regexp.exec.bind(regexp);
@@ -39,9 +33,21 @@ exports.separateSubgraph = function(graph, predicate) {
   return subgraph;
 }
 
+/**
+ * Resolve module id
+ * @param {String} id
+ * @param {Module} parent
+ */
 
-exports.resolve = function(id, parent) {
-  var promise = q.defer();
-  resolveCb(id, parent, promise.makeNodeResolver());
-  return promise;
+/**
+ * Stream dependencies from graph
+ * @param {Object|Array|Graph} graph
+ */
+exports.graphToStream = function(graph) {
+  if (typeof graph.toStream === 'function')
+    return graph.toStream()
+  else if (Array.isArray(graph))
+    return asStream.apply(null, graph)
+  else
+    return asStream.apply(null, utils.values(graph))
 }

@@ -1,166 +1,158 @@
-"use strict";
-
-var path          = require('path'),
-    EventEmitter  = require('events').EventEmitter,
-    u             = require('lodash'),
+var EventEmitter  = require('events').EventEmitter,
+    path          = require('path'),
     q             = require('kew'),
-    through       = require('through'),
-    aggregate     = require('stream-aggregate-promise'),
-    combine       = require('stream-combiner'),
+    utils         = require('lodash'),
+    resolve       = require('browser-resolve'),
     builtins      = require('browser-builtins'),
-    insertGlobals = require('insert-module-globals'),
-    depsSort      = require('deps-sort'),
-    cssPack       = require('css-pack'),
+    aggregate     = require('stream-aggregate-promise'),
     DGraph        = require('dgraph').Graph,
-    dgraphlive    = require('dgraph-live'),
+    watchGraph    = require('dgraph-live'),
     cssImportTr   = require('dgraph-css-import'),
-    JSBundler     = require('dgraph-bundler').Bundler,
-    utils         = require('./utils');
+    cssBundler    = require('./bundlers/css'),
+    jsBundler     = require('./bundlers/js'),
+    common        = require('./common');
 
 /**
- * @param entries {Array|String}
- * @param opts {Object}
+ * Compose bundle
+ *
+ * @param {Array.<String|Module>} entries
+ * @param {Options} opts
  */
-function Compose(opts) {
-  opts.extensions = ['.js'].concat(opts.extensions || []);
+function Composer(entries, opts) {
+  opts = opts || {};
 
-  this.entries = [].concat(opts.entries).map(function(m) {
-    if (u.isString(m)) {
-      return {unresolvedId: m, entry: true};
-    } else {
-      m.unresolvedId = m.id;
-      return m;
-    }
-  });
-  this.opts = opts || {};
-  this.basedir = this.opts.basedir || process.cwd();
-  this._expose = {}; // will be computed by Compose::resolveEntries
+  this.entries = [];
 
-  this.createGraph = u.memoize(this.createGraph);
-  this.processGraph = u.memoize(this.processGraph);
+  this.opts = opts;
+  this.basedir = opts.basedir || process.cwd();
+
+  this._entries = utils.memoize(this._entries);
+  this._graph = utils.memoize(this._graph);
+
+  [].concat(entries)
+    .filter(Boolean)
+    .forEach(this._addEntry.bind(this));
 }
 
-u.assign(Compose.prototype, EventEmitter.prototype, {
+utils.assign(Composer.prototype, EventEmitter.prototype, {
 
   /**
-   * Return JS bundle as a stream.
-   * @param {Object} opts
+   * Add entry
+   *
+   * @param {Module|String} entry
+   * @private
    */
-  js: function(opts) {
-    opts = opts || {};
-    return this._createOutput(function(indexes, output) {
-      combine(
-        new JSBundler(
-            utils.indexToStream(indexes.js),
-            {
-              expose: this._expose,
-              debug: opts.debug,
-              prelude: this.prelude
-            })
-          .through(insertGlobals({basedir: this.basedir}))
-          .inject(utils.dummyModule, {expose: true})
-          .toStream(),
-        output);
-    }.bind(this));
+  _addEntry: function(entry) {
+    if (utils.isString(entry))
+      entry = {id: entry};
+
+    if (utils.isBoolean(entry.expose))
+      entry.expose = entry.id;
+
+    this.entries.push(entry);
   },
 
   /**
-   * Return CSS bundle as a stream.
-   * @param {Object} opts
+   * Resolve single module
+   *
+   * @private
    */
-  css: function(opts) {
-    opts = opts || {};
-    return this._createOutput(function(indexes, output) {
-      combine(
-        utils.indexToStream(indexes.css),
-        depsSort(),
-        cssPack(),
-        output);
-    }.bind(this));
-  },
-
-  all: function(opts) {
-    return {js: this.js(opts), css: this.css(opts)};
+  _resolve: function(mod) {
+    var promise = q.defer(),
+        parent = {filename: path.join(mod.basedir || this.basedir, '_fake.js')};
+    resolve(mod.id, parent, promise.makeNodeResolver());
+    return promise.then(function(id) {
+      return utils.assign({}, mod, {id: id});
+    });
   },
 
   /**
-   * Convenience to create and setup an output stream for an index
+   * Get resolved entries
+   *
+   * @private
    */
-  _createOutput: function(func) {
-    var output = through(),
-        onError = function(err) { output.emit('error', err); };
-
-    this.processGraph()
-      .then(function(indexes) {
-        func(indexes, output);
-      }.bind(this))
-      .fail(onError);
-
-    return output;
+  _entries: function() {
+    return q.all(this.entries.map(this._resolve.bind(this)));
   },
 
-  resolveEntries: function() {
-    var parent = {filename: path.join(this.basedir, '_fake.js')},
-        p = this.entries.map(function(m) {
-          return utils.resolve(m.unresolvedId, parent).then(function(id) {
-            m.id = id;
-            return m;
-          });
+  /**
+   * Mark composer as updated
+   *
+   * @private
+   */
+  _updated: function() {
+    this._graph.cache = {};
+    this.emit('update');
+  },
+
+  /**
+   * Create a set of entries into a dependency graph
+   *
+   * @private
+   */
+  _graph: function() {
+    return this._entries().then(function(entries) {
+      var graph = new DGraph(entries, {
+          transform: [].concat(this.opts.transform, cssImportTr),
+          extensions: this.opts.extensions,
+          modules: builtins
         });
-    return q.all(p).then(function(entries) {
-      for (var i = 0, length = entries.length; i < length; i++)
-        if (this.entries[i].expose)
-          this._expose[entries[i].id] = u.isBoolean(this.entries[i].expose) ?
-            this.entries[i].unresolvedId : this.entries[i].expose;
-      return entries;
+
+      if (this.opts.debug) {
+        graph = watchGraph(graph);
+        graph.on('update', this._updated.bind(this));
+      }
+
+      return graph;
     }.bind(this));
   },
 
   /**
-   * Resolve entries and instantiate graph for them.
-   * The returned value will be memorized.
+   * @private
    */
-  createGraph: function() {
-
-    return this.resolveEntries()
-      .then(function(entries) {
-        var graph = new DGraph(entries, {
-            transform: [].concat(this.opts.transform, cssImportTr),
-            extensions: this.opts.extensions,
-            modules: builtins
-          });
-        if (this.opts.watch || this.opts.watchAll) {
-          graph = dgraphlive(graph, {watchAll: this.opts.watchAll});
-          graph.on('update', function() {
-            this.processGraph.cache = {};
-            this.emit('update');
-          }.bind(this));
-        }
-        return graph;
-      }.bind(this));
-  },
-
-  processGraph: function() {
-    return this.createGraph()
-      .then(function(graph) {return aggregate(graph.toStream())})
-      .then(utils.buildIndex)
-      .then(this.layoutGraph.bind(this)).end();
+  _graphIndex: function() {
+    return this._graph()
+      .then(function(graph) { return aggregate(graph.toStream()); })
+      .then(common.buildIndex);
   },
 
   /**
-   * Return a resolved graph as a set of indexes.
-   * The returned value will be memorized.
+   * Bundle
    */
-  layoutGraph: function(graph) {
-    var css = utils.separateSubgraph(
-      graph,
-      utils.matcher(/\.(css|styl|scss|sass|less)/));
-    return {
-      css: utils.stubMissingDeps(css),
-      js: utils.stubMissingDeps(graph)
-    }
-  }
+  bundle: function() {
+    var graph = this._graphIndex(),
+        entries = this._entries();
 
+    return q.all([graph, entries]).then(function(result) {
+      var js = result[0],
+          entries = result[1];
+
+      var css = common.separateSubgraph(
+        js,
+        common.matcher(/\.(css|styl|scss|sass|less)/));
+
+      var css = common.stubMissingDeps(css);
+      var js = common.stubMissingDeps(js);
+      js[common.dummyModule.id] = common.dummyModule;
+
+      return {
+        'bundle.css': cssBundler(css),
+        'bundle.js': jsBundler(js, {
+          debug: this.opts.debug,
+          expose: exposeMap(entries)
+        })
+      }
+    }.bind(this));
+  }
 });
 
-module.exports = Compose;
+function exposeMap(modules) {
+  var expose = {};
+  expose[common.dummyModule.id] = common.dummyModule.id;
+  modules.forEach(function(mod) {
+    if (mod.expose) expose[mod.id] = mod.expose;
+  });
+  return expose;
+}
+
+module.exports = Composer;

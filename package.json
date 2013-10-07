@@ -6,7 +6,6 @@
   "dependencies": {
     "dgraph": "0.8.x",
     "dgraph-live": "0.4.x",
-    "dgraph-bundler": "0.3.x",
     "lodash": "2.x.x",
     "browser-resolve": "~1.1.4",
     "kew": "git+https://github.com/andreypopp/kew.git",
@@ -20,10 +19,12 @@
     "dgraph-css-import": "~0.1.1",
     "optimist": "~0.6.0",
     "as-stream": "~0.1.1",
-    "detective": "~2.2.0"
+    "detective": "~2.2.0",
+    "browser-pack": "~0.11.0"
   },
   "devDependencies": {
-    "jshint": "~2.1.11"
+    "jshint": "~2.1.11",
+    "mocha": "~1.13.0"
   },
   "scripts": {
     "test": "mocha specs/*.js"
