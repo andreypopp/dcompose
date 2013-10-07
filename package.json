@@ -1,6 +1,6 @@
 {
   "name": "dcompose",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Asset composer",
   "main": "index.js",
   "dependencies": {
@@ -24,7 +24,8 @@
   },
   "devDependencies": {
     "jshint": "~2.1.11",
-    "mocha": "~1.13.0"
+    "mocha": "~1.13.0",
+    "semver": "~2.1.0"
   },
   "scripts": {
     "test": "mocha specs/*.js"
