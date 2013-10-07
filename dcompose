@@ -25,17 +25,12 @@ var fs          = require('fs'),
         alias: 'output',
         describe: 'Set output directory'
       })
+      .option('extension', {
+        describe: 'File extensions to treat as modules (default: .js)'
+      })
       .option('multi', {
         boolean: true,
         describe: 'Split bundle into multiple pieces'
-      })
-      .option('js', {
-        boolean: true,
-        describe: 'Process only JavaScript'
-      })
-      .option('css', {
-        boolean: true,
-        describe: 'Process only CSS'
       });
 
 var argv = optimist.argv;
@@ -44,14 +39,14 @@ if (argv.help)
   return optimist.showHelp();
 
 if (!argv.multi)
-  var DCompose = require('./index')
+  var Composer = require('./index')
 else
-  var DCompose = require('./multi/index');
+  var Composer = require('./multi/index');
 
-var composer = new DCompose({
-  entries: argv._,
+var composer = new Composer(argv._, {
   transform: [].concat(argv.t).concat(argv.transform).filter(Boolean),
-  extensions: [].concat(argv.extension).filter(Boolean)
+  extensions: [].concat(argv.extension).filter(Boolean),
+  debug: argv.debug
 });
 
 var output = argv.output || argv.o || '.';
@@ -64,29 +59,12 @@ function onError(stream) {
   return stream;
 }
 
-function layoutMultiBundle(streams, directory) {
+function layoutBundle(directory, streams) {
   for (var name in streams)
     streams[name]
       .pipe(fs.createWriteStream(path.join(directory, name)))
 }
 
-if (argv.multi) {
-  layoutMultiBundle(composer.all(argv), output);
-} else if (argv.js) {
-  onError(composer.js(argv)).pipe(output === '-'
-    ?  process.stdout
-    : fs.createWriteStream(path.join(output, 'bundle.js')));
-
-} else if (argv.css) {
-  onError(composer.css(argv)).pipe(output === '-'
-    ?  process.stdout
-    : fs.createWriteStream(path.join(output, 'bundle.css')));
-
-} else {
-  var bundles = composer.all(argv);
-  ['js', 'css'].forEach(function(bundle) {
-    onError(bundles[bundle]).pipe(
-      fs.createWriteStream(path.join(output, 'bundle.' + bundle)));
-  });
-}
-
+composer.bundle()
+  .then(layoutBundle.bind(null, argv.output))
+  .end();
