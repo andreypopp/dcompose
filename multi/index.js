@@ -1,37 +1,54 @@
 /**
  * @typedef {Object} Split
- * @property {Object} graph
- * @property {Array.<Strign>} deps
- * @property {Array.<Strign>} invDeps
+ *   @property {Object} graph
+ *   @property {Array.<Strign>} deps
+ *   @property {Array.<Strign>} invDeps
  */
 
-var BaseCompose = require('../index'),
-    fs          = require('fs'),
-    path        = require('path'),
-    u           = require('lodash'),
-    inherits    = require('util').inherits,
-    utils       = require('../utils'),
-    hash        = require('dgraph-bundler').hash,
-    asyncDeps   = require('./async_deps');
+var fs            = require('fs'),
+    path          = require('path'),
+    utils         = require('lodash'),
+    inherits      = require('util').inherits,
+    cssBundler    = require('../bundlers/css'),
+    jsBundler     = require('../bundlers/js'),
+    BaseComposer  = require('../index'),
+    hash          = require('../common').hash,
+    asyncDeps     = require('./async-deps');
 
-var runtime = fs.readFileSync(path.join(__dirname, 'runtime.js'), 'utf8');
-var prelude = fs.readFileSync(path.join(__dirname, 'prelude.js'), 'utf8');
+var runtime = fs.readFileSync(path.join(__dirname, 'runtime.js'), 'utf8'),
+    prelude = fs.readFileSync(path.join(__dirname, 'prelude.js'), 'utf8');
 
-function Compose(opts) {
-  BaseCompose.call(this, opts);
+function Composer(entries, opts) {
+  BaseComposer.call(this, entries, opts);
   this.opts.transform = (this.opts.transform || []).concat(asyncDeps);
-  this.prelude = prelude;
 }
 
-inherits(Compose, BaseCompose);
+inherits(Composer, BaseComposer);
 
-Compose.prototype.layoutGraph = function(graph) {
-  var entry = path.resolve(this.entries[0]);
-  return new LayoutStrategy(graph, entry).layout();
+Composer.prototype.bundle = function(graph) {
+
+  return this._graphIndex().then(function(graph) {
+    var layout = layoutMultiBundle(graph, this.entries),
+        bundles = {};
+
+    for (var k in layout)
+      if (k.match(/\.css$/)
+        bundles[k] = cssBundler(layout[k])
+      else if (k.match(/\.js$/))
+        bundles[k] = jsBundler(layout[k])
+      else
+        throw new Error("don't know how to bundle " + k);
+
+    return bundles;
+  }.bind(this));
 }
 
-function LayoutStrategy(graph, entry) {
-  this.entry = entry;
+function layoutMultiBundle(graph, entries) {
+  return new LayoutStrategy(graph, entries).layout();
+}
+
+function LayoutStrategy(graph, entries) {
+  this.entries = entries;
   this.graph = graph;
   this.mappings = {};
 }
@@ -43,7 +60,7 @@ LayoutStrategy.prototype = {
         results = {};
 
     for (var id in splits)
-      console.log(u.pick(splits[id], ['id', 'deps', 'invDeps', 'closedInvDeps']))
+      console.log(utils.pick(splits[id], ['id', 'deps', 'invDeps', 'closedInvDeps']))
 
     for (var id in splits) {
       results[bundleName(id)] = splits[id].graph;
@@ -57,13 +74,13 @@ LayoutStrategy.prototype = {
           conds.forEach(function(c) {
             bundle = except(bundle, splits[c].graph);
           });
-          if (!u.isEmpty(bundle))
+          if (!utils.isEmpty(bundle))
             results[bundleName(id, conds)] = bundle;
         });
       }
     }
 
-    console.log(u.keys(results).length);
+    console.log(utils.keys(results).length);
     return results;
   },
 
@@ -76,7 +93,7 @@ LayoutStrategy.prototype = {
     splits[this.entry] = computeSplit(this.graph, this.entry);
 
     traverse(this.graph, this.entry, function(mod) {
-      if (u.isEmpty(mod.async_deps)) return;
+      if (utils.isEmpty(mod.async_deps)) return;
       for (var id in mod.async_deps)
         splits[mod.async_deps[id]] = computeSplit(this.graph, mod.async_deps[id]);
     }.bind(this));
@@ -95,7 +112,7 @@ LayoutStrategy.prototype = {
     }
 
     for (var id in allPaths)
-      splits[id].invDeps = u.intersection.apply(null, allPaths[id]);
+      splits[id].invDeps = utils.intersection.apply(null, allPaths[id]);
 
     return splits;
   },
@@ -105,7 +122,7 @@ LayoutStrategy.prototype = {
     for (var p in splits)
       for (var t in splits) {
         if (t === p) continue;
-        if (u.intersection(
+        if (utils.intersection(
               Object.keys(splits[p].graph),
               Object.keys(splits[t].graph)).length > 0) {
           conds[p] = conds[p] || [];
@@ -116,20 +133,22 @@ LayoutStrategy.prototype = {
   },
 
   addRuntimeLoader: function(graph) {
-    graph['__runtime__/loader'] = {
-      id: '__runtime__/loader',
+    var id = '__runtime__/loader';
+    graph[id] = {
+      id: id,
       source: runtime,
       deps: {},
-      expose: true
+      expose: id
     }
   },
 
   addRuntimeModuleMapping: function(graph) {
-    graph['__runtime__/modules'] = {
-      id: '__runtime__/modules',
+    var id = '__runtime__/modules';
+    graph[id] = {
+      id: id,
       deps: {},
       source: 'module.exports = ' + JSON.stringify(this.mapping) + ';',
-      expose: true
+      expose: id
     }
   },
 
@@ -142,9 +161,9 @@ function computeSplit(graph, entry) {
   var graph =  subgraphFor(graph, entry);
   var deps = [];
   for (var id in graph)
-    if (!u.isEmpty(graph[id].async_deps))
-      deps = deps.concat(u.values(graph[id].async_deps));
-  return {id: entry, graph: graph, deps: u.uniq(deps)};
+    if (!utils.isEmpty(graph[id].async_deps))
+      deps = deps.concat(utils.values(graph[id].async_deps));
+  return {id: entry, graph: graph, deps: utils.uniq(deps)};
 }
 
 function traverse(graph, fromId, func) {
@@ -159,7 +178,7 @@ function traverse(graph, fromId, func) {
     seen[mod.id] = true;
 
     var value = func.apply(null, args);
-    if (u.isBoolean(value) && !value) continue;
+    if (utils.isBoolean(value) && !value) continue;
     for (var depId in mod.deps)
       if (mod.deps[depId])
         toTraverse.unshift([graph[mod.deps[depId]], depId, mod]);
@@ -197,4 +216,4 @@ function bundleName(entry, conds) {
   return parts.join('_');
 }
 
-module.exports = Compose;
+module.exports = Composer;
