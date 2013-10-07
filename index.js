@@ -1,3 +1,5 @@
+"use strict";
+
 var EventEmitter  = require('events').EventEmitter,
     path          = require('path'),
     q             = require('kew'),
@@ -131,8 +133,8 @@ utils.assign(Composer.prototype, EventEmitter.prototype, {
         js,
         common.matcher(/\.(css|styl|scss|sass|less)/));
 
-      var css = common.stubMissingDeps(css);
-      var js = common.stubMissingDeps(js);
+      css = common.stubMissingDeps(css);
+      js = common.stubMissingDeps(js);
       js[common.dummyModule.id] = common.dummyModule;
 
       return {
