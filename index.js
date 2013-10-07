@@ -123,16 +123,10 @@ utils.assign(Composer.prototype, EventEmitter.prototype, {
    * Bundle
    */
   bundle: function() {
-    var graph = this._graphIndex(),
-        entries = this._entries();
-
-    return q.all([graph, entries]).then(function(result) {
-      var js = result[0],
-          entries = result[1];
-
+    return this._graphIndex().then(function(js) {
       var css = common.separateSubgraph(
-        js,
-        common.matcher(/\.(css|styl|scss|sass|less)/));
+            js,
+            common.matcher(/\.(css|styl|scss|sass|less)/));
 
       css = common.stubMissingDeps(css);
       js = common.stubMissingDeps(js);
@@ -142,7 +136,7 @@ utils.assign(Composer.prototype, EventEmitter.prototype, {
         'bundle.css': cssBundler(css),
         'bundle.js': jsBundler(js, {
           debug: this.opts.debug,
-          expose: exposeMap(entries)
+          expose: exposeMap(this.entries)
         })
       }
     }.bind(this));
