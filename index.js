@@ -30,6 +30,7 @@ function Composer(entries, opts) {
 
   this._entries = utils.memoize(this._entries);
   this._graph = utils.memoize(this._graph);
+  this._graphIndex = utils.memoize(this._graphIndex);
 
   [].concat(entries)
     .filter(Boolean)
@@ -83,7 +84,7 @@ utils.assign(Composer.prototype, EventEmitter.prototype, {
    * @private
    */
   _updated: function() {
-    this._graph.cache = {};
+    this._graphIndex.cache = {};
     this.emit('update');
   },
 
