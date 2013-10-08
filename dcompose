@@ -13,10 +13,6 @@ var fs          = require('fs'),
         boolean: true,
         describe: 'Show this message and exit'
       })
-      .option('t', {
-        alias: 'transform',
-        describe: 'Apply transform'
-      })
       .option('d', {
         alias: 'debug',
         describe: 'Emit source maps'
@@ -24,6 +20,10 @@ var fs          = require('fs'),
       .option('o', {
         alias: 'output',
         describe: 'Set output directory'
+      })
+      .option('t', {
+        alias: 'transform',
+        describe: 'Apply transform'
       })
       .option('extension', {
         describe: 'File extensions to treat as modules (default: .js)'
