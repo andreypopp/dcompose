@@ -152,4 +152,7 @@ function exposeMap(modules) {
   return expose;
 }
 
-module.exports = Composer;
+module.exports = function(entries, opts) {
+  return new Composer(entries, opts);
+}
+module.exports.Composer = Composer;
