@@ -1,4 +1,4 @@
-var Composer  = require('../index'),
+var dcompose  = require('../index'),
     q         = require('kew'),
     assert    = require('assert'),
     path      = require('path'),
@@ -20,7 +20,7 @@ function assertBundleOk(bundle) {
 describe('composer', function() {
 
   it('bundles css and js dependencies', function(done) {
-    var composer = new Composer(fixture('entry.js'));
+    var composer = dcompose(fixture('entry.js'));
     composer.bundle().then(function(bundle) {
       var js = assertBundleOk(bundle['bundle.js'],
         'I am entry.js',
@@ -31,4 +31,19 @@ describe('composer', function() {
       return q.all([js, css]).then(function() { done(); });
     }).fail(done);
   });
+
+  it('bundles css and js dependencies (result via callback)', function(done) {
+    var composer = dcompose(fixture('entry.js'));
+    composer.bundle(function(err, bundle) {
+      if (err) return done(err);
+      var js = assertBundleOk(bundle['bundle.js'],
+        'I am entry.js',
+        'I am dep.js');
+      var css = assertBundleOk(bundle['bundle.css'],
+        'I am styles.css',
+        'I am dep.css');
+      return q.all([js, css]).then(function() { done(); });
+    });
+  });
+
 });

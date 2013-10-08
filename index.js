@@ -122,8 +122,8 @@ utils.assign(Composer.prototype, EventEmitter.prototype, {
   /**
    * Bundle
    */
-  bundle: function() {
-    return this._graphIndex().then(function(js) {
+  bundle: function(callback) {
+    var streams = this._graphIndex().then(function(js) {
       var css = common.separateSubgraph(
             js,
             common.matcher(/\.(css|styl|scss|sass|less)/));
@@ -140,6 +140,14 @@ utils.assign(Composer.prototype, EventEmitter.prototype, {
         })
       }
     }.bind(this));
+
+    if (callback) {
+      streams.then(
+        function(result) { callback(null, result); },
+        function(error) { callback(error); });
+    }
+
+    return streams;
   }
 });
 
