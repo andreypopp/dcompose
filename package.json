@@ -20,8 +20,7 @@
     "optimist": "~0.6.0",
     "as-stream": "~0.1.1",
     "detective": "~2.2.0",
-    "browser-pack": "~0.11.0",
-    "mimetype": "0.0.5"
+    "browser-pack": "~0.11.0"
   },
   "devDependencies": {
     "jshint": "~2.1.11",
