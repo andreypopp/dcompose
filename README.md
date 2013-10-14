@@ -13,10 +13,6 @@ CommonJS bundler for a browser.
 
     Options:
       -h, --help       Show this message and exit
-      -v, --version    Show version and exit
-      -q, --quite      Suppress progress and warning messages
-      --verbose        Show debug messages
-      --no-color       No color output
 
       -o, --output     Set output directory
       -w, --watch      Watch for changes and rebuild bundles
@@ -26,7 +22,7 @@ CommonJS bundler for a browser.
       --graph          Produce only dependency graph and pring it on stdout
 
       -t, --transform  Apply transform
-      --extension      File extensions to treat as modules (default: .js)
+      --extension      File extensions to treat as modules [default: .js]
 
       --js             Produce bundle of JS dependency graph only
                        (this is the default behaviour)

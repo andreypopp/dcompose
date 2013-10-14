@@ -40,7 +40,7 @@ function Composer(entries, opts) {
 utils.assign(Composer.prototype, EventEmitter.prototype, {
 
   /**
-   * Add entry
+   * Add an entry module
    *
    * @param {Module|String} entry
    * @private
@@ -56,8 +56,9 @@ utils.assign(Composer.prototype, EventEmitter.prototype, {
   },
 
   /**
-   * Resolve single module
+   * Resolve a single module
    *
+   * @param {Module} mod
    * @private
    */
   _resolve: function(mod) {
@@ -89,7 +90,7 @@ utils.assign(Composer.prototype, EventEmitter.prototype, {
   },
 
   /**
-   * Create a set of entries into a dependency graph
+   * Create a depenency graph
    *
    * @private
    */
@@ -111,6 +112,8 @@ utils.assign(Composer.prototype, EventEmitter.prototype, {
   },
 
   /**
+   * Aggregate a depenency graph into a graph index
+   *
    * @private
    */
   _graphIndex: function() {
@@ -120,45 +123,68 @@ utils.assign(Composer.prototype, EventEmitter.prototype, {
   },
 
   /**
+   * Separate graph into JS and CSS subgraphs
+   *
+   * @private
+   */
+  _separatedGraph: function(graph) {
+    return this._graphIndex().then(function(graph) {
+      var js = utils.clone(graph),
+          css = common.separateSubgraph(js, common.isCSS);
+      return {
+        js: common.stubMissingDeps(js),
+        css: common.stubMissingDeps(css)
+      };
+    }.bind(this));
+  },
+
+  _bundleCSS: function(graph) {
+    return cssBundler(graph);
+  },
+
+  _bundleJS: function(graph) {
+    return jsBundler(graph, {
+      debug: this.opts.debug,
+      expose: common.exposeMap(this.entries)
+    });
+  },
+
+  /**
    * Bundle
    */
-  bundle: function(callback) {
-    var streams = this._graphIndex().then(function(js) {
-      var css = common.separateSubgraph(
-            js,
-            common.matcher(/\.(css|styl|scss|sass|less)/));
-
-      css = common.stubMissingDeps(css);
-      js = common.stubMissingDeps(js);
-      js[common.dummyModule.id] = common.dummyModule;
-
-      return {
-        'bundle.css': cssBundler(css),
-        'bundle.js': jsBundler(js, {
-          debug: this.opts.debug,
-          expose: exposeMap(this.entries)
-        })
-      }
+  all: function(cb) {
+    var streams = this._separatedGraph().then(function(graph) {
+      var bundles = {},
+          name = path.basename(this.entries[0].id).replace(/\..*$/, '');
+      bundles[name + '.bundle.css'] = this._bundleCSS(graph.css);
+      bundles[name + '.bundle.js'] = this._bundleJS(graph.js);
+      return bundles;
     }.bind(this));
 
-    if (callback) {
-      streams.then(
-        function(result) { callback(null, result); },
-        function(error) { callback(error); });
-    }
-
+    common.thenCallback(streams, cb);
     return streams;
+  },
+
+  js: function(cb) {
+    var stream = this._separatedGraph().then(function(graph) {
+      return this._bundleJS(graph.js);
+    }.bind(this));
+
+    common.thenCallback(stream, cb);
+
+    return stream;
+  },
+
+  css: function(cb) {
+    var stream = this._separatedGraph().then(function(graph) {
+      return this._bundleCSS(graph.css);
+    }.bind(this));
+
+    common.thenCallback(stream, cb);
+
+    return stream;
   }
 });
-
-function exposeMap(modules) {
-  var expose = {};
-  expose[common.dummyModule.id] = common.dummyModule.id;
-  modules.forEach(function(mod) {
-    if (mod.expose) expose[mod.id] = mod.expose;
-  });
-  return expose;
-}
 
 module.exports = function(entries, opts) {
   return new Composer(entries, opts);

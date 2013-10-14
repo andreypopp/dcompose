@@ -1,4 +1,6 @@
 var utils         = require('lodash'),
+    path          = require('path'),
+    fs            = require('fs'),
     q             = require('kew'),
     crypto        = require('crypto'),
     asStream      = require('as-stream');
@@ -17,12 +19,19 @@ exports.matcher = function(regexp) {
 }
 
 exports.stubMissingDeps = function(graph) {
+  var stubbed = false;
   for (var id in graph)
     for (var dep in graph[id].deps)
-      if (!graph[graph[id].deps[dep]])
+      if (!graph[graph[id].deps[dep]]) {
         graph[id].deps[dep] = exports.dummyModule.id;
+        stubbed = true;
+      }
+  if (stubbed)
+    graph[exports.dummyModule.id] = exports.dummyModule;
   return graph;
 }
+
+exports.isCSS = exports.matcher(/\.(css|styl|scss|sass|less)/);
 
 exports.separateSubgraph = function(graph, predicate) {
   var subgraph = {};
@@ -49,4 +58,26 @@ exports.graphToStream = function(graph) {
 
 exports.hash = function(what) {
   return crypto.createHash('md5').update(what).digest('base64').slice(0, 6)
+}
+
+exports.exposeMap = function(modules) {
+  var expose = {};
+  expose[exports.dummyModule.id] = exports.dummyModule.id;
+  modules.forEach(function(mod) {
+    if (mod.expose) expose[mod.id] = mod.expose;
+  });
+  return expose;
+}
+
+exports.thenCallback = function(promise, cb) {
+  if (cb) promise.then(
+    function(result) { cb(null, result); },
+    function(error) { cb(error); });
+  return promise;
+}
+
+exports.layoutBundle = function(directory, streams) {
+  for (var name in streams)
+    streams[name]
+      .pipe(fs.createWriteStream(path.join(directory, name)))
 }

@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 "use strict";
 
-var fs          = require('fs'),
-    path        = require('path'),
+var common      = require('./common'),
+    fs          = require('fs'),
     optimist    = require('optimist')
       .usage('Usage: dcompose [options] entry')
       .check(function(argv) {
@@ -21,27 +21,33 @@ var fs          = require('fs'),
         alias: 'output',
         describe: 'Set output directory'
       })
+      .option('js', {
+        describe: 'Bundle JS dependencies only (this is the default behaviour)',
+        boolean: true,
+        default: true
+      })
+      .option('css', {
+        boolean: true,
+        describe: 'Bundle CSS dependencies only'
+      })
+      .option('all', {
+        boolean: true,
+        describe: 'Bundle both JS and CSS dependencies'
+      })
       .option('t', {
         alias: 'transform',
         describe: 'Apply transform'
       })
       .option('extension', {
-        describe: 'File extensions to treat as modules (default: .js)'
+        describe: 'File extensions to treat as modules [default: .js]'
       })
-      .option('multi', {
-        boolean: true,
-        describe: 'Split bundle into multiple pieces'
-      });
 
 var argv = optimist.argv;
 
 if (argv.help)
   return optimist.showHelp();
 
-if (!argv.multi)
-  var Composer = require('./index')
-else
-  var Composer = require('./multi/index');
+var Composer = require('./index');
 
 var composer = new Composer(argv._, {
   transform: [].concat(argv.t).concat(argv.transform).filter(Boolean),
@@ -49,22 +55,32 @@ var composer = new Composer(argv._, {
   debug: argv.debug
 });
 
-var output = argv.output || argv.o || '.';
+var output = argv.output || argv.o;
 
-function onError(stream) {
-  stream.on('error', function(err) {
-    console.error(err.stack);
-    process.exit(1);
-  });
-  return stream;
+if (argv.all) {
+  if (!output)
+    error('provide output directory for bundle with -o/--output option');
+
+  composer.all()
+    .then(common.layoutBundle.bind(null, argv.output))
+    .end();
+} else if (argv.css) {
+  composer.css()
+    .then(function(stream) {
+      var out = output ? fs.createWriteStream(output) : process.stdout;
+      stream.pipe(out);
+    })
+    .end();
+} else if (argv.js) {
+  composer.js()
+    .then(function(stream) {
+      var out = output ? fs.createWriteStream(output) : process.stdout;
+      stream.pipe(out);
+    })
+    .end();
 }
 
-function layoutBundle(directory, streams) {
-  for (var name in streams)
-    streams[name]
-      .pipe(fs.createWriteStream(path.join(directory, name)))
+function error(msg, code) {
+  console.error('error: ' + msg);
+  process.exit(msg, code || 1);
 }
-
-composer.bundle()
-  .then(layoutBundle.bind(null, argv.output))
-  .end();
