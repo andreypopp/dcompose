@@ -84,9 +84,9 @@ utils.assign(Composer.prototype, EventEmitter.prototype, {
    *
    * @private
    */
-  _updated: function() {
+  _updated: function(filename) {
     this._graphIndex.cache = {};
-    this.emit('update');
+    this.emit('update', filename);
   },
 
   /**
