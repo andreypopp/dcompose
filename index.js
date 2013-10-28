@@ -97,6 +97,7 @@ utils.assign(Composer.prototype, EventEmitter.prototype, {
   _graph: function() {
     return this._entries().then(function(entries) {
       var graph = new DGraph(entries, {
+          transformKey: ["browserify", "transform"],
           transform: [].concat(this.opts.transform, cssImportTr),
           extensions: this.opts.extensions,
           modules: builtins
