@@ -9,7 +9,7 @@ var EventEmitter  = require('events').EventEmitter,
     aggregate     = require('stream-aggregate-promise'),
     DGraph        = require('dgraph').Graph,
     watchGraph    = require('dgraph-live'),
-    cssImportTr   = require('dgraph-css-import'),
+    cssImports    = require('dgraph-css-import'),
     cssBundler    = require('./bundlers/css'),
     jsBundler     = require('./bundlers/js'),
     common        = require('./common');
@@ -28,9 +28,8 @@ function Composer(entries, opts) {
   this.opts = opts;
   this.basedir = opts.basedir || process.cwd();
 
-  this._entries = utils.memoize(this._entries);
   this._graph = utils.memoize(this._graph);
-  this._graphIndex = utils.memoize(this._graphIndex);
+  this._graphs = utils.memoize(this._graphs);
 
   [].concat(entries)
     .filter(Boolean)
@@ -71,21 +70,12 @@ utils.assign(Composer.prototype, EventEmitter.prototype, {
   },
 
   /**
-   * Get resolved entries
-   *
-   * @private
-   */
-  _entries: function() {
-    return q.all(this.entries.map(this._resolve.bind(this)));
-  },
-
-  /**
    * Mark composer as updated
    *
    * @private
    */
   _updated: function(filename) {
-    this._graphIndex.cache = {};
+    this._graphs.cache = {};
     this.emit('update', filename);
   },
 
@@ -95,32 +85,22 @@ utils.assign(Composer.prototype, EventEmitter.prototype, {
    * @private
    */
   _graph: function() {
-    return this._entries().then(function(entries) {
-      var graph = new DGraph(entries, {
-          transformKey: ["browserify", "transform"],
-          transform: [].concat(this.opts.transform, cssImportTr),
-          extensions: this.opts.extensions,
-          modules: builtins
-        });
+    return q.all(this.entries.map(this._resolve.bind(this)))
+      .then(function(entries) {
+        var graph = new DGraph(entries, {
+            transformKey: ["browserify", "transform"],
+            transform: [].concat(this.opts.transform, cssImports),
+            extensions: this.opts.extensions,
+            modules: builtins
+          });
 
-      if (this.opts.debug) {
-        graph = watchGraph(graph);
-        graph.on('update', this._updated.bind(this));
-      }
+        if (this.opts.debug) {
+          graph = watchGraph(graph);
+          graph.on('update', this._updated.bind(this));
+        }
 
-      return graph;
-    }.bind(this));
-  },
-
-  /**
-   * Aggregate a dependency graph into a graph index
-   *
-   * @private
-   */
-  _graphIndex: function() {
-    return this._graph()
-      .then(function(graph) { return aggregate(graph.toStream()); })
-      .then(common.buildIndex);
+        return graph;
+      }.bind(this));
   },
 
   /**
@@ -128,15 +108,18 @@ utils.assign(Composer.prototype, EventEmitter.prototype, {
    *
    * @private
    */
-  _separatedGraph: function(graph) {
-    return this._graphIndex().then(function(graph) {
-      var js = utils.clone(graph),
-          css = common.separateSubgraph(js, common.isCSS);
-      return {
-        js: common.stubMissingDeps(js),
-        css: common.stubMissingDeps(css)
-      };
-    }.bind(this));
+  _graphs: function(graph) {
+    return this._graph()
+      .then(function(graph) { return aggregate(graph.toStream()); })
+      .then(common.buildIndex)
+      .then(function(graph) {
+        var js = utils.clone(graph),
+            css = common.separateSubgraph(js, common.isCSS);
+        return {
+          js: common.stubMissingDeps(js),
+          css: common.stubMissingDeps(css)
+        };
+      }.bind(this));
   },
 
   _bundleCSS: function(graph) {
@@ -154,7 +137,7 @@ utils.assign(Composer.prototype, EventEmitter.prototype, {
    * Bundle
    */
   all: function(cb) {
-    var streams = this._separatedGraph().then(function(graph) {
+    var streams = this._graphs().then(function(graph) {
       var bundles = {},
           name = path.basename(this.entries[0].id).replace(/\..*$/, '');
       bundles[name + '.bundle.css'] = this._bundleCSS(graph.css);
@@ -167,7 +150,7 @@ utils.assign(Composer.prototype, EventEmitter.prototype, {
   },
 
   js: function(cb) {
-    var stream = this._separatedGraph().then(function(graph) {
+    var stream = this._graphs().then(function(graph) {
       return this._bundleJS(graph.js);
     }.bind(this));
 
@@ -177,7 +160,7 @@ utils.assign(Composer.prototype, EventEmitter.prototype, {
   },
 
   css: function(cb) {
-    var stream = this._separatedGraph().then(function(graph) {
+    var stream = this._graphs().then(function(graph) {
       return this._bundleCSS(graph.css);
     }.bind(this));
 
