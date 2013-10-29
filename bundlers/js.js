@@ -25,6 +25,7 @@ module.exports = function(graph, opts) {
   pipeline = pipeline.concat([
     mangleModuleNames(opts.expose),
     depsSort(),
+    insertGlobals(),
     browserPack({raw: true, prelude: opts.prelude}),
     wrapBundle()
   ]);
