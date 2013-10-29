@@ -22,17 +22,12 @@ var common      = require('./common'),
         describe: 'Set output directory'
       })
       .option('js', {
-        describe: 'Bundle JS dependencies only (this is the default behaviour)',
-        boolean: true,
-        default: true
+        describe: 'Bundle JS dependencies only',
+        boolean: true
       })
       .option('css', {
         boolean: true,
         describe: 'Bundle CSS dependencies only'
-      })
-      .option('all', {
-        boolean: true,
-        describe: 'Bundle both JS and CSS dependencies'
       })
       .option('t', {
         alias: 'transform',
@@ -41,6 +36,14 @@ var common      = require('./common'),
       .option('extension', {
         describe: 'File extensions to treat as modules [default: .js]'
       })
+
+function pipe(a, b) {
+  a.on('error', function(err) {
+    console.warn('error: ', err);
+    process.exit(1);
+  });
+  a.pipe(b);
+}
 
 var argv = optimist.argv;
 
@@ -57,30 +60,10 @@ var composer = new Composer(argv._, {
 
 var output = argv.output || argv.o;
 
-if (argv.all) {
-  if (!output)
-    error('provide output directory for bundle with -o/--output option');
-
-  composer.all()
-    .then(common.layoutBundle.bind(null, argv.output))
-    .end();
-} else if (argv.css) {
-  composer.css()
-    .then(function(stream) {
-      var out = output ? fs.createWriteStream(output) : process.stdout;
-      stream.pipe(out);
-    })
-    .end();
-} else if (argv.js) {
-  composer.js()
-    .then(function(stream) {
-      var out = output ? fs.createWriteStream(output) : process.stdout;
-      stream.pipe(out);
-    })
-    .end();
-}
-
-function error(msg, code) {
-  console.error('error: ' + msg);
-  process.exit(msg, code || 1);
-}
+var out = output ? fs.createWriteStream(output) : process.stdout;
+if (argv.js)
+  pipe(composer.bundleJS(), out)
+else if (argv.css)
+  pipe(composer.bundleCSS(), out)
+else
+  pipe(composer.bundle(), out);

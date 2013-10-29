@@ -1,17 +1,20 @@
 "use strict";
 
 var EventEmitter  = require('events').EventEmitter,
+    through       = require('through'),
     path          = require('path'),
     q             = require('kew'),
     utils         = require('lodash'),
     resolve       = require('browser-resolve'),
     builtins      = require('browser-builtins'),
     aggregate     = require('stream-aggregate-promise'),
+    aggregateCb   = require('stream-aggregate'),
     DGraph        = require('dgraph').Graph,
     watchGraph    = require('dgraph-live'),
     cssImports    = require('dgraph-css-import'),
     cssBundler    = require('./bundlers/css'),
     jsBundler     = require('./bundlers/js'),
+    cssModule     = require('./css-module'),
     common        = require('./common');
 
 /**
@@ -23,17 +26,33 @@ var EventEmitter  = require('events').EventEmitter,
 function Composer(entries, opts) {
   opts = opts || {};
 
-  this.entries = [];
-
   this.opts = opts;
   this.basedir = opts.basedir || process.cwd();
-
-  this._graph = utils.memoize(this._graph);
-  this._graphs = utils.memoize(this._graphs);
+  this.entries = [];
 
   [].concat(entries)
     .filter(Boolean)
     .forEach(this._addEntry.bind(this));
+
+  this._graph = utils.memoize(this._graph);
+  this._dependencies = this._makeGraph();
+  this._memoizedGraph = null;
+}
+
+function makeBundler(func) {
+  return function(cb) {
+    var output = through();
+    this._graph()
+      .then(func.bind(this))
+      .then(function(stream) {
+        stream
+          .on('error', output.emit.bind(output, 'error'))
+          .pipe(output);
+      })
+      .fail(output.emit.bind(output, 'error'))
+
+    return cb ? aggregateCb(output, cb) : output;
+  }
 }
 
 utils.assign(Composer.prototype, EventEmitter.prototype, {
@@ -75,7 +94,7 @@ utils.assign(Composer.prototype, EventEmitter.prototype, {
    * @private
    */
   _updated: function(filename) {
-    this._graphs.cache = {};
+    this._memoizedGraph = null;
     this.emit('update', filename);
   },
 
@@ -84,7 +103,7 @@ utils.assign(Composer.prototype, EventEmitter.prototype, {
    *
    * @private
    */
-  _graph: function() {
+  _makeGraph: function() {
     return q.all(this.entries.map(this._resolve.bind(this)))
       .then(function(entries) {
         var graph = new DGraph(entries, {
@@ -103,15 +122,9 @@ utils.assign(Composer.prototype, EventEmitter.prototype, {
       }.bind(this));
   },
 
-  /**
-   * Separate graph into JS and CSS subgraphs
-   *
-   * @private
-   */
-  _graphs: function(graph) {
-    return this._graph()
-      .then(function(graph) { return aggregate(graph.toStream()); })
-      .then(common.buildIndex)
+  _graph: function() {
+    return this._dependencies
+      .then(function(deps) { return deps.toPromise(); })
       .then(function(graph) {
         var js = utils.clone(graph),
             css = common.separateSubgraph(js, common.isCSS);
@@ -137,7 +150,7 @@ utils.assign(Composer.prototype, EventEmitter.prototype, {
    * Bundle
    */
   all: function(cb) {
-    var streams = this._graphs().then(function(graph) {
+    var streams = this._graph().then(function(graph) {
       var bundles = {},
           name = path.basename(this.entries[0].id).replace(/\..*$/, '');
       bundles[name + '.bundle.css'] = this._bundleCSS(graph.css);
@@ -149,25 +162,26 @@ utils.assign(Composer.prototype, EventEmitter.prototype, {
     return streams;
   },
 
-  js: function(cb) {
-    var stream = this._graphs().then(function(graph) {
-      return this._bundleJS(graph.js);
+  bundle: makeBundler(function(graph) {
+    return aggregate(this._bundleCSS(graph.css)).then(function(css) {
+      graph = utils.clone(graph.js);
+      return this._bundleJS(utils.assign({
+        '__dcompose_styles__': {
+          id: '__dcompose_styles__',
+          source: cssModule(css),
+          entry: true
+        }
+      }, graph));
     }.bind(this));
+  }),
 
-    common.thenCallback(stream, cb);
+  bundleJS: makeBundler(function(graph) {
+    return this._bundleJS(graph.js);
+  }),
 
-    return stream;
-  },
-
-  css: function(cb) {
-    var stream = this._graphs().then(function(graph) {
-      return this._bundleCSS(graph.css);
-    }.bind(this));
-
-    common.thenCallback(stream, cb);
-
-    return stream;
-  }
+  bundleCSS: makeBundler(function(graph) {
+    return this._bundleCSS(graph.css);
+  })
 });
 
 module.exports = function(entries, opts) {

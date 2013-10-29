@@ -24,14 +24,14 @@ function assertHasSubstrings(bundle) {
   });
 }
 
-describe('composer', function() {
+describe('Composer', function() {
 
-  describe('bundles js', function() {
+  describe('bundleJS', function() {
 
     it('bundles only js dependencies', function(done) {
       var composer = dcompose(fixture('entry.js'));
-      composer.js().then(aggregate).then(function(bundle) {
-        assertHasSubstrings(bundle, 
+      aggregate(composer.bundleJS()).then(function(bundle) {
+        assertHasSubstrings(bundle,
           'I am entry.js',
           'I am dep.js');
         done();
@@ -40,24 +40,22 @@ describe('composer', function() {
 
     it('bundles only js dependencies (result via callback)', function(done) {
       var composer = dcompose(fixture('entry.js'));
-      composer.js(function(err, bundle) {
+      composer.bundleJS(function(err, bundle) {
         if (err) return done(err);
-        aggregate(bundle).then(function(bundle) {
-          assertHasSubstrings(bundle, 
-            'I am entry.js',
-            'I am dep.js');
-          done();
-        }).fail(done);
+        assertHasSubstrings(bundle,
+          'I am entry.js',
+          'I am dep.js');
+        done();
       });
     });
   });
 
-  describe('bundles css', function() {
+  describe('bundleCSS', function() {
 
     it('bundles only css dependencies', function(done) {
       var composer = dcompose(fixture('styles.css'));
-      composer.css().then(aggregate).then(function(bundle) {
-        assertHasSubstrings(bundle, 
+      aggregate(composer.bundleCSS()).then(function(bundle) {
+        assertHasSubstrings(bundle,
           'I am styles.css',
           'I am dep.css');
         done();
@@ -66,44 +64,42 @@ describe('composer', function() {
 
     it('bundles only css dependencies (result via callback)', function(done) {
       var composer = dcompose(fixture('styles.css'));
-      composer.css(function(err, bundle) {
+      composer.bundleCSS(function(err, bundle) {
         if (err) return done(err);
-        aggregate(bundle).then(function(bundle) {
-          assertHasSubstrings(bundle, 
-            'I am styles.css',
-            'I am dep.css');
-          done();
-        }).fail(done);
+        assertHasSubstrings(bundle,
+          'I am styles.css',
+          'I am dep.css');
+        done();
       });
     });
   });
 
-  describe('bundles all', function() {
+  describe('bundle', function() {
 
     it('bundles css and js dependencies', function(done) {
       var composer = dcompose(fixture('entry.js'));
-      composer.all().then(function(bundle) {
-        var js = assertBundleOk(bundle['entry.bundle.js'],
+      aggregate(composer.bundle()).then(function(bundle) {
+        assertHasSubstrings(bundle,
           'I am entry.js',
           'I am dep.js');
-        var css = assertBundleOk(bundle['entry.bundle.css'],
+        assertHasSubstrings(bundle,
           'I am styles.css',
           'I am dep.css');
-        return q.all([js, css]).then(function() { done(); });
+        done();
       }).fail(done);
     });
 
     it('bundles css and js dependencies (result via callback)', function(done) {
       var composer = dcompose(fixture('entry.js'));
-      composer.all(function(err, bundle) {
+      composer.bundle(function(err, bundle) {
         if (err) return done(err);
-        var js = assertBundleOk(bundle['entry.bundle.js'],
+        assertHasSubstrings(bundle,
           'I am entry.js',
           'I am dep.js');
-        var css = assertBundleOk(bundle['entry.bundle.css'],
+        assertHasSubstrings(bundle,
           'I am styles.css',
           'I am dep.css');
-        return q.all([js, css]).then(function() { done(); });
+        done();
       });
     });
   });

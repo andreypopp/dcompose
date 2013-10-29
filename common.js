@@ -5,13 +5,6 @@ var utils         = require('lodash'),
     crypto        = require('crypto'),
     asStream      = require('as-stream');
 
-exports.buildIndex = function(modules) {
-  var index = {};
-  for (var i = 0, length = modules.length; i < length; i++)
-    index[modules[i].id] = utils.cloneDeep(modules[i]);
-  return index;
-}
-
 exports.dummyModule = {id: '__dummy__', source: '', expose: '__dummy__'};
 
 exports.matcher = function(regexp) {
