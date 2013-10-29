@@ -42,6 +42,7 @@ function Composer(entries, opts) {
 function makeBundler(func) {
   return function(cb) {
     var output = through();
+    output.asPromise = function() { return aggregate(output); };
     this._graph()
       .then(func.bind(this))
       .then(function(stream) {

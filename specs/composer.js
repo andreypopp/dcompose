@@ -48,6 +48,16 @@ describe('Composer', function() {
         done();
       });
     });
+
+    it('bundles only js dependencies (result via promise)', function(done) {
+      var composer = dcompose(fixture('entry.js'));
+      composer.bundleJS().asPromise().then(function(bundle) {
+        assertHasSubstrings(bundle,
+          'I am entry.js',
+          'I am dep.js');
+        done();
+      }).fail(done);
+    });
   });
 
   describe('bundleCSS', function() {
@@ -71,6 +81,16 @@ describe('Composer', function() {
           'I am dep.css');
         done();
       });
+    });
+
+    it('bundles only css dependencies (result via promise)', function(done) {
+      var composer = dcompose(fixture('styles.css'));
+      composer.bundleCSS().asPromise().then(function(bundle) {
+        assertHasSubstrings(bundle,
+          'I am styles.css',
+          'I am dep.css');
+        done();
+      }).fail(done);
     });
   });
 
@@ -101,6 +121,19 @@ describe('Composer', function() {
           'I am dep.css');
         done();
       });
+    });
+
+    it('bundles css and js dependencies (result via promise)', function(done) {
+      var composer = dcompose(fixture('entry.js'));
+      composer.bundle().asPromise().then(function(bundle) {
+        assertHasSubstrings(bundle,
+          'I am entry.js',
+          'I am dep.js');
+        assertHasSubstrings(bundle,
+          'I am styles.css',
+          'I am dep.css');
+        done();
+      }).fail(done);
     });
   });
 
