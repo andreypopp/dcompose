@@ -90,7 +90,7 @@ utils.assign(Composer.prototype, EventEmitter.prototype, {
   },
 
   /**
-   * Create a depenency graph
+   * Create a dependency graph
    *
    * @private
    */
@@ -113,7 +113,7 @@ utils.assign(Composer.prototype, EventEmitter.prototype, {
   },
 
   /**
-   * Aggregate a depenency graph into a graph index
+   * Aggregate a dependency graph into a graph index
    *
    * @private
    */
