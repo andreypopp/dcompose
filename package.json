@@ -7,7 +7,7 @@
     "dcompose": "./dcompose"
   },
   "dependencies": {
-    "dgraph": ">= 0.9.x",
+    "dgraph": ">= 0.10.x",
     "dgraph-live": ">= 0.5.x",
     "lodash": "2.x.x",
     "browser-resolve": "~1.1.4",

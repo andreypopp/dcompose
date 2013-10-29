@@ -33,6 +33,10 @@ var common      = require('./common'),
         alias: 'transform',
         describe: 'Apply transform'
       })
+      .option('global-transform', {
+        alias: 'globalTransform',
+        describe: 'Apply global transform'
+      })
       .option('extension', {
         describe: 'File extensions to treat as modules [default: .js]'
       })
