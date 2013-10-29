@@ -3,6 +3,9 @@
   "version": "0.6.1",
   "description": "Asset composer",
   "main": "index.js",
+  "bin": {
+    "dcompose": "./dcompose"
+  },
   "dependencies": {
     "dgraph": ">= 0.9.x",
     "dgraph-live": ">= 0.5.x",
