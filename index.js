@@ -36,7 +36,6 @@ function Composer(entries, opts) {
 
   this._graph = utils.memoize(this._graph);
   this._dependencies = this._makeGraph();
-  this._memoizedGraph = null;
 }
 
 function makeBundler(func) {
@@ -95,7 +94,7 @@ utils.assign(Composer.prototype, EventEmitter.prototype, {
    * @private
    */
   _updated: function(filename) {
-    this._memoizedGraph = null;
+    this._graph.cache = {};
     this.emit('update', filename);
   },
 
