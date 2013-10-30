@@ -49,7 +49,6 @@ function pipe(a, b) {
 }
 
 var argv = optimist.argv;
-argv.globalTransform = argv['global-transform'];
 
 if (argv.help)
   return optimist.showHelp();
@@ -58,6 +57,7 @@ var Composer = require('./index');
 
 var composer = new Composer(argv._, {
   transform: [].concat(argv.t).concat(argv.transform).filter(Boolean),
+  globalTransform: [].concat(argv['global-transform']).filter(Boolean),
   extensions: [].concat(argv.extension).filter(Boolean),
   debug: argv.debug
 });
