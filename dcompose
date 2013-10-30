@@ -34,7 +34,6 @@ var common      = require('./common'),
         describe: 'Apply transform'
       })
       .option('global-transform', {
-        alias: 'globalTransform',
         describe: 'Apply global transform'
       })
       .option('extension', {
@@ -50,6 +49,7 @@ function pipe(a, b) {
 }
 
 var argv = optimist.argv;
+argv.globalTransform = argv['global-transform'];
 
 if (argv.help)
   return optimist.showHelp();
