@@ -18,7 +18,7 @@
     "stream-aggregate-promise": "~0.1.1",
     "through": "~2.3.4",
     "stream-combiner": "0.0.2",
-    "css-pack": "~0.x.x",
+    "css-pack": ">= 0.2.1",
     "dgraph-css-import": "~0.1.1",
     "optimist": "~0.6.0",
     "as-stream": "~0.1.1",
