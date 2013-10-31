@@ -7,7 +7,7 @@
     "dcompose": "./dcompose"
   },
   "dependencies": {
-    "dgraph": ">= 0.10.x",
+    "dgraph": ">= 0.11.x",
     "dgraph-live": ">= 0.5.x",
     "lodash": "2.x.x",
     "browser-resolve": "~1.1.4",
@@ -25,7 +25,8 @@
     "detective": "~2.2.0",
     "browser-pack": "~0.11.0",
     "sha1": "~1.1.0",
-    "stream-aggregate": "~0.1.1"
+    "stream-aggregate": "~0.1.1",
+    "resolve": "~0.5.1"
   },
   "devDependencies": {
     "jshint": "~2.1.11",

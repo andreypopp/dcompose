@@ -33,6 +33,9 @@ var common      = require('./common'),
         alias: 'transform',
         describe: 'Apply transform'
       })
+      .option('css-transform', {
+        describe: 'Apply CSS transform'
+      })
       .option('global-transform', {
         describe: 'Apply global transform'
       })
@@ -53,11 +56,16 @@ var argv = optimist.argv;
 if (argv.help)
   return optimist.showHelp();
 
+var transform = [].concat(argv.t).concat(argv.transform);
+var cssTransform = argv['css-transform'];
+var globalTransform = argv['global-transform'];
+
 var Composer = require('./index');
 
 var composer = new Composer(argv._, {
-  transform: [].concat(argv.t).concat(argv.transform).filter(Boolean),
-  globalTransform: [].concat(argv['global-transform']).filter(Boolean),
+  transform: transform,
+  cssTransform: cssTransform,
+  globalTransform: globalTransform,
   extensions: [].concat(argv.extension).filter(Boolean),
   debug: argv.debug
 });

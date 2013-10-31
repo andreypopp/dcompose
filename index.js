@@ -25,6 +25,20 @@ var EventEmitter  = require('events').EventEmitter,
  */
 function Composer(entries, opts) {
   opts = opts || {};
+  opts.transform = []
+    .concat(opts.transform)
+    .filter(Boolean)
+    .map(common.resolveTransform);
+  opts.cssTransform = []
+    .concat(opts.cssTransform)
+    .filter(Boolean)
+    .map(common.resolveTransform)
+    .map(common.makeCSSTransform);
+  opts.globalTransform = []
+    .concat(opts.globalTransform)
+    .filter(Boolean)
+    .map(common.resolveTransform)
+    .concat(opts.cssTransform);
 
   this.opts = opts;
   this.basedir = opts.basedir || process.cwd();
