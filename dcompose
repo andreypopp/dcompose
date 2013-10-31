@@ -2,16 +2,19 @@
 "use strict";
 
 var common      = require('./common'),
+    version     = require('./package.json').version,
     fs          = require('fs'),
     optimist    = require('optimist')
       .usage('Usage: dcompose [options] entry')
-      .check(function(argv) {
-        if (argv._.length === 0) throw new Error('provide entry');
-      })
       .option('h', {
         alias: 'help',
         boolean: true,
         describe: 'Show this message and exit'
+      })
+      .option('v', {
+        alias: 'version',
+        boolean: true,
+        describe: 'Print dcompose version'
       })
       .option('d', {
         alias: 'debug',
@@ -43,10 +46,16 @@ var common      = require('./common'),
         describe: 'File extensions to treat as modules [default: .js]'
       })
 
+function error(msg, showHelp) {
+  if (showHelp)
+    optimist.showHelp();
+  console.warn('error: ', msg);
+  process.exit(1);
+}
+
 function pipe(a, b) {
   a.on('error', function(err) {
-    console.warn('error: ', err);
-    process.exit(1);
+    error(err);
   });
   a.pipe(b);
 }
@@ -55,6 +64,12 @@ var argv = optimist.argv;
 
 if (argv.help)
   return optimist.showHelp();
+
+if (argv.version)
+  return console.log(version);
+
+if (argv._.length === 0)
+  error('provide bundle entry module as an argument', true);
 
 var transform = [].concat(argv.t).concat(argv.transform);
 var cssTransform = argv['css-transform'];
