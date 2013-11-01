@@ -11,7 +11,7 @@
     "dgraph-live": ">= 0.5.x",
     "lodash": "2.x.x",
     "browser-resolve": "~1.1.4",
-    "kew": "git+https://github.com/andreypopp/kew.git",
+    "kew": "~0.3.0",
     "browser-builtins": "2.0.x",
     "deps-sort": "~0.1.1",
     "insert-module-globals": "~1.3.1",
