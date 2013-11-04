@@ -18,6 +18,7 @@ var common      = require('./common'),
       })
       .option('d', {
         alias: 'debug',
+        boolean: true,
         describe: 'Emit source maps'
       })
       .option('o', {
