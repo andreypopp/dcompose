@@ -1,7 +1,8 @@
+"use strict";
+
 var utils         = require('lodash'),
     path          = require('path'),
     fs            = require('fs'),
-    q             = require('kew'),
     crypto        = require('crypto'),
     resolveNode   = require('resolve'),
     asStream      = require('as-stream');
@@ -74,19 +75,6 @@ exports.layoutBundle = function(directory, streams) {
   for (var name in streams)
     streams[name]
       .pipe(fs.createWriteStream(path.join(directory, name)))
-}
-
-exports.makeCSSTransform = function(transform) {
-  if (transform.length === 1)
-    return function(filename) {
-      if (exports.isCSS(filename))
-        return transform(filename);
-    }
-  else
-    return function(mod, graph) {
-      if (exports.isCSS(mod.id))
-        return transform(mod, graph);
-    }
 }
 
 exports.resolveTransform = function(id, basedir) {

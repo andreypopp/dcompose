@@ -6,7 +6,7 @@ install link:
 	@npm $@
 
 lint:
-	@$(BIN)/jshint index.js
+	@$(BIN)/jshint index.js jsbundler.js common.js css-module.js
 
 test::
 	@$(BIN)/mocha -R spec specs/*.js

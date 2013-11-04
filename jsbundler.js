@@ -1,10 +1,12 @@
+"use strict";
+
 var utils         = require('lodash'),
     browserPack   = require('browser-pack'),
     through       = require('through'),
     insertGlobals = require('insert-module-globals'),
     depsSort      = require('deps-sort'),
     combine       = require('stream-combiner'),
-    common        = require('../common');
+    common        = require('./common');
 
 /**
  * Bundle graph of javascript dependencies

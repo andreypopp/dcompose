@@ -1,7 +1,6 @@
 "use strict";
 
-var isCSS = require('./common').isCSS,
-    sha1  = require('sha1');
+var sha1  = require('sha1');
 
 /**
  * Wrap CSS into a CommonJS module which inserts styles into DOM.

@@ -4,6 +4,7 @@ var EventEmitter  = require('events').EventEmitter,
     through       = require('through'),
     path          = require('path'),
     q             = require('kew'),
+    combine       = require('stream-combiner'),
     utils         = require('lodash'),
     resolve       = require('browser-resolve'),
     builtins      = require('browser-builtins'),
@@ -12,8 +13,8 @@ var EventEmitter  = require('events').EventEmitter,
     DGraph        = require('dgraph').Graph,
     watchGraph    = require('dgraph-live'),
     cssImports    = require('dgraph-css-import'),
-    cssBundler    = require('./bundlers/css'),
-    jsBundler     = require('./bundlers/js'),
+    xcss          = require('xcss').bundle,
+    jsBundler     = require('./jsbundler'),
     cssModule     = require('./css-module'),
     common        = require('./common');
 
@@ -32,13 +33,11 @@ function Composer(entries, opts) {
   opts.cssTransform = []
     .concat(opts.cssTransform)
     .filter(Boolean)
-    .map(common.resolveTransform)
-    .map(common.makeCSSTransform);
+    .map(common.resolveTransform);
   opts.globalTransform = []
     .concat(opts.globalTransform)
     .filter(Boolean)
-    .map(common.resolveTransform)
-    .concat(opts.cssTransform);
+    .map(common.resolveTransform);
 
   this.opts = opts;
   this.basedir = opts.basedir || process.cwd();
@@ -151,7 +150,10 @@ utils.assign(Composer.prototype, EventEmitter.prototype, {
   },
 
   _bundleCSS: function(graph) {
-    return cssBundler(graph);
+    return combine(common.graphToStream(graph), xcss({
+      debug: this.opts.debug,
+      transform: this.opts.cssTransform
+    }));
   },
 
   _bundleJS: function(graph) {
