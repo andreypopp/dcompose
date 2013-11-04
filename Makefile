@@ -8,7 +8,7 @@ install link:
 lint:
 	@$(BIN)/jshint index.js
 
-test:
+test::
 	@$(BIN)/mocha -R spec specs/*.js
 
 release-patch: test lint
