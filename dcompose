@@ -21,6 +21,11 @@ var common      = require('./common'),
         boolean: true,
         describe: 'Emit source maps'
       })
+      .option('w', {
+        alias: 'watch',
+        boolean: true,
+        describe: 'Watch for changes and rebuild (--output should be passed)'
+      })
       .option('o', {
         alias: 'output',
         describe: 'Set output directory'
@@ -72,6 +77,9 @@ if (argv.version)
 if (argv._.length === 0)
   error('provide bundle entry module as an argument', true);
 
+if (argv.watch && !argv.output)
+  error('provide output via -o/--output option', true);
+
 var transform = [].concat(argv.t).concat(argv.transform);
 var cssTransform = argv['css-transform'];
 var globalTransform = argv['global-transform'];
@@ -83,15 +91,28 @@ var composer = new Composer(argv._, {
   cssTransform: cssTransform,
   globalTransform: globalTransform,
   extensions: [].concat(argv.extension).filter(Boolean),
-  debug: argv.debug
+  debug: argv.debug,
+  watch: argv.watch
 });
 
 var output = argv.output || argv.o;
 
-var out = output ? fs.createWriteStream(output) : process.stdout;
-if (argv.js)
-  pipe(composer.bundleJS(), out)
-else if (argv.css)
-  pipe(composer.bundleCSS(), out)
-else
-  pipe(composer.bundle(), out);
+function bundle() {
+  var out = output ? fs.createWriteStream(output) : process.stdout;
+  if (argv.js)
+    pipe(composer.bundleJS(), out)
+  else if (argv.css)
+    pipe(composer.bundleCSS(), out)
+  else
+    pipe(composer.bundle(), out);
+}
+
+if (argv.watch) {
+  console.log('starting to watch for source changes');
+  composer.on('update', function() {
+    console.log('source change detected, rebuilding bundle');
+    bundle();
+  });
+}
+
+bundle();

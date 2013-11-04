@@ -127,7 +127,7 @@ utils.assign(Composer.prototype, EventEmitter.prototype, {
             modules: builtins
           });
 
-        if (this.opts.debug) {
+        if (this.opts.watch) {
           graph = watchGraph(graph);
           graph.on('update', this._updated.bind(this));
         }
