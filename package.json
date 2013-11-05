@@ -25,7 +25,8 @@
     "stream-aggregate-promise": "~0.1.1",
     "stream-aggregate": "~0.1.1",
     "resolve": "~0.5.1",
-    "xcss": "~0.9.0"
+    "xcss": "~0.9.0",
+    "deps-sort": "~0.1.1"
   },
   "devDependencies": {
     "jshint": "~2.1.11",
