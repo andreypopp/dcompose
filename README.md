@@ -1,6 +1,14 @@
 # dcompose
 
-CommonJS bundler for a browser.
+CommonJS bundler for javascript and CSS.
+
+What does it mean? It means you can write code which requires other code and...
+stylesheets:
+
+    var styles = require('./button.css');
+    var dependency = require('./button.js');
+
+    ...
 
 ## Installation
 
@@ -8,60 +16,71 @@ CommonJS bundler for a browser.
 
 ## Usage
 
+There is a command line utility `dcompose`:
+
     % dcompose --help
     Usage: dcompose [options] entry
 
     Options:
-      -h, --help       Show this message and exit
+      -h, --help          Show this message and exit
+      -v, --version       Print dcompose version
+      -d, --debug         Emit source maps
+      -w, --watch         Watch for changes and rebuild (--output should be passed)
+      -o, --output        Set output directory
+      --js                Bundle JS dependencies only
+      --css               Bundle CSS dependencies only
+      -t, --transform     Apply transform
+      --css-transform     Apply CSS transform
+      --global-transform  Apply global transform
+      --extension         File extensions to treat as modules [default: .js]
 
-      -o, --output     Set output directory
-      -w, --watch      Watch for changes and rebuild bundles
-                       (-o/--output must be supplied)
+Usage from Node.js is also possible:
 
-      -d, --debug      Produce bundle with source maps
-      --graph          Produce only dependency graph and pring it on stdout
+    var dcompose = require('dcompose');
 
-      -t, --transform  Apply transform
-      --extension      File extensions to treat as modules [default: .js]
-
-      --js             Produce bundle of JS dependency graph only
-                       (this is the default behaviour)
-      --css            Produce bundle of CSS dependency graph only
-      --all            Produce bundle of both CSS and JS dependency graphs
-                       (-o/--output must be supplied)
-
-      --splitted       Produce splitted bundle (-o/--output must be supplied)
+    dcompose('./entry.js', {debug: true})
+      .bundleJS(function(err, bundle) {
+        console.log(bundle);
+      });
 
 ## Usage examples
 
-Bundle JS dependencies:
+Produce a bundle:
 
     % dcompose ./app.js > ./app.bundle.js
-    progress: bundling JS dependencies
 
-If there are CSS dependencies in the bundle then the warning will be issued:
-
-    % dcompose ./app.js > ./app.bundle.js
-    warning: CSS dependencies detected, bundle them with "dcompose --css"
-    progress: bundling JS dependencies
-
-You can bundle CSS dependencies subgraph using --css option:
+You can bundle CSS dependencies separately:
 
     % dcompose --css ./app.js > ./app.bundle.css
-    progress: bundling CSS dependencies
 
-Or you can bundle both JS and CSS dependencies, by default bundles will be
-created in the current directory:
+You can bundle JS dependencies separately:
 
-    % dcompose --all ./app.js
-    bundling JS dependencies into: ./app.bundle.js
-    bundling CSS dependencies into: ./app.bundle.css
+    % dcompose --js ./app.js > ./app.bundle.js
 
-You can override the output directory with --output option:
+Produce a bundle with source map information (debug mode):
 
-    % dcompose --all --output ./build ./app.js
-    bundling JS dependencies into: ./build/app.bundle.js
-    bundling CSS dependencies into: ./build/app.bundle.css
+    % dcompose --debug ./app.js > ./app.bundle.js
+
+Produce a bundle and start watching on changes:
+
+    % dcompose --watch --output ./app.bundle.js ./app.js
+
+## Handling CSS dependencies
+
+Regarding javascript dependencies this works exactly like browserify. Regarding
+stylesheet dependencies there are two strategies supported by dcompose:
+
+By default CSS dependencies will be wrapped into CommonJS module which will
+append stylesheet to a DOM when executed first time. This is not superefficient
+but will provide a quick start for prototyping.
+
+Another approach is to bundle CSS dependencies separately, for that there's
+`--css` option which will bundle only CSS dependencies from a dependency graph:
+
+    % dcompose --css ./app.js > ./app.bundle.css
+
+After that you can include `app.bundle.css` like you normally would in `<link>`
+element.
 
 ## API
 
@@ -109,29 +128,36 @@ All fields except `id` are optional:
 
 ##### Options
 
-  * transform
-  * extensions
+  * `transform` — a single transform or an array of transforms, transform is a
+    module id which exports transform function or transform function itself.
+    Browserify and dgraph transform are supported.
+
+  * `cssTransform` — a single CSS transform or an array of CSS transforms,
+    transform is a module id which exports transform function or transform
+    function itself. xcss transforms are supported.
+
+  * `extensions` — an array of extensions to use then resolving a `require` with
+    no extension provided, by default only `.js` files a re considered.
+
+  * `debug` — emit source maps (works both from CSS and JS)
+
+  * `watch` — start watching for source changes and emit `update` event
 
 #### Events
 
 Composer object is an EventEmitter and emits the following events during
 lifecycle:
 
-  * `dep` — when any dependency encountered whild dependency resolution process
-  * `graphReady` — when dependency graph is ready
+  * `update` — when an update to code in dependency graph occurs.
 
-#### dcompose.graph([cb])
+#### dcompose.bundle([cb])
 
-Produce dependency graph.
+Produce bundle of JS and CSS dependencies.
 
-#### dcompose.js([cb])
+#### dcompose.bundleJS([cb])
 
 Produce bundle of JS dependencies.
 
-#### dcompose.css([cb])
+#### dcompose.bundleCSS([cb])
 
 Produce bundle of CSS dependencies.
-
-#### dcompose.all([cb])
-
-Produce bundle of JS and CSS dependencies.
