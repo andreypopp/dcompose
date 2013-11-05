@@ -25,7 +25,7 @@
     "sha1": "~1.1.0",
     "stream-aggregate": "~0.1.1",
     "resolve": "~0.5.1",
-    "xcss": "~0.4.1"
+    "xcss": "~0.7.0"
   },
   "devDependencies": {
     "jshint": "~2.1.11",
