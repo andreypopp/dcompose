@@ -77,8 +77,8 @@ exports.layoutBundle = function(directory, streams) {
       .pipe(fs.createWriteStream(path.join(directory, name)))
 }
 
-exports.resolveTransform = function(id, basedir) {
-  basedir = basedir || process.cwd();
+exports.resolveTransform = function(id) {
+  var basedir = process.cwd();
   return utils.isString(id) ?
     require(resolveNode.sync(id, {basedir: basedir})) :
     id;
