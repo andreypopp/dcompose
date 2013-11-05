@@ -163,22 +163,6 @@ utils.assign(Composer.prototype, EventEmitter.prototype, {
     });
   },
 
-  /**
-   * Bundle
-   */
-  all: function(cb) {
-    var streams = this._graph().then(function(graph) {
-      var bundles = {},
-          name = path.basename(this.entries[0].id).replace(/\..*$/, '');
-      bundles[name + '.bundle.css'] = this._bundleCSS(graph.css);
-      bundles[name + '.bundle.js'] = this._bundleJS(graph.js);
-      return bundles;
-    }.bind(this));
-
-    common.thenCallback(streams, cb);
-    return streams;
-  },
-
   bundle: makeBundler(function(graph) {
     return aggregate(this._bundleCSS(graph.css)).then(function(css) {
       graph = utils.clone(graph.js);
