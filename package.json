@@ -7,7 +7,7 @@
     "dcompose": "./dcompose"
   },
   "dependencies": {
-    "dgraph": ">= 0.11.x",
+    "dgraph": ">= 0.12.x",
     "dgraph-live": ">= 0.5.x",
     "lodash": "2.x.x",
     "browser-resolve": "~1.1.4",
@@ -17,7 +17,7 @@
     "stream-aggregate-promise": "~0.1.1",
     "through": "~2.3.4",
     "stream-combiner": "0.0.2",
-    "dgraph-css-import": "~0.1.1",
+    "dgraph-css-import": "~0.6.0",
     "optimist": "~0.6.0",
     "as-stream": "~0.1.1",
     "detective": "~2.2.0",
@@ -25,7 +25,7 @@
     "sha1": "~1.1.0",
     "stream-aggregate": "~0.1.1",
     "resolve": "~0.5.1",
-    "xcss": "~0.7.0"
+    "xcss": "~0.8.2"
   },
   "devDependencies": {
     "jshint": "~2.1.11",
