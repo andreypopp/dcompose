@@ -1,5 +1,7 @@
 # dcompose
 
+**WARNING:** dcompose is deprecated, use [webpack](http://webpack.github.io) instead.
+
 CommonJS bundler for javascript and CSS.
 
 What does it mean? It means you can write code which requires other code and...
